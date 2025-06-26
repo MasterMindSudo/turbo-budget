@@ -1,0 +1,33 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Authenticated users only
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+
+    // Group access control
+    match /groups/{groupId} {
+      allow read, write: if request.auth != null && exists(/databases/$(database)/documents/groups/$(groupId)/members/$(request.auth.uid));
+    }
+
+    // Members subcollection
+    match /groups/{groupId}/members/{memberId} {
+      allow read: if request.auth != null && exists(/databases/$(database)/documents/groups/$(groupId)/members/$(request.auth.uid));
+      allow create: if request.auth != null && exists(/databases/$(database)/documents/groups/$(groupId)/members/$(request.auth.uid)); // Only existing members can add others
+      allow write: if request.auth != null && request.auth.uid == memberId; // Users can only update their own membership status (e.g., accept invitation)
+    }
+
+    // Expenses subcollection
+    match /groups/{groupId}/expenses/{expenseId} {
+      allow read, create, write: if request.auth != null && exists(/databases/$(database)/documents/groups/$(groupId)/members/$(request.auth.uid));
+    }
+
+    // Recurring subcollection
+    match /groups/{groupId}/recurring/{recurringId} {
+      allow read, create, write: if request.auth != null && exists(/databases/$(database)/documents/groups/$(groupId)/members/$(request.auth.uid));
+    }
+  }
+}
