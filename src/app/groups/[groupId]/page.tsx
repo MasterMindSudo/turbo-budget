@@ -3,18 +3,21 @@
 
 import React from 'react';
 import { useParams, useRouter } from 'next/navigation'; // Added useRouter
-import { Container, Typography, Box, Grid, Paper, List, ListItem, ListItemText, Avatar, Chip } from '@mui/material';
+import { Container, Typography, Box, Grid, Paper, List, ListItem, ListItemText, Avatar, Chip, Button, IconButton } from '@mui/material';
 import GroupIcon from '@mui/icons-material/Group';
 import PersonIcon from '@mui/icons-material/Person';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { useBudget } from '@/context/BudgetProvider'; // Adjust path as needed
 import moment from 'moment';
+import AddMemberDialog from '@/components/shared/AddMemberDialog';
 
 const GroupDetailPage = () => {
   const params = useParams();
   const router = useRouter(); // Initialize useRouter
   const groupId = (params?.groupId as string) || '';
-  const { getGroupById, getMembersByGroupId, getExpensesByGroupId } = useBudget();
+  const { getGroupById, getMembersByGroupId, getExpensesByGroupId, addMember, addOfflineMember } = useBudget();
+  const [openAddMemberDialog, setOpenAddMemberDialog] = React.useState(false);
 
   const group = getGroupById(groupId);
   const members = getMembersByGroupId(groupId);
@@ -29,12 +32,30 @@ const GroupDetailPage = () => {
         <Typography variant="body1">
           The group with ID &quot;{groupId}&quot; does not exist or you do not have access.
         </Typography>
+        <Button variant="contained" sx={{ mt: 2 }} onClick={() => router.push('/dashboard')}>
+          Go to Dashboard
+        </Button>
       </Container>
     );
   }
 
   const handleExpenseClick = (expenseId: string) => {
     router.push(`/groups/${groupId}/expense/${expenseId}/edit`);
+  };
+
+  const handleAddMember = async (emailOrName: string, type: 'online' | 'offline') => {
+    if (type === 'online') {
+      await addMember(groupId, emailOrName);
+    } else {
+      await addOfflineMember(groupId, emailOrName);
+    }
+    setOpenAddMemberDialog(false);
+  };
+
+  const handleRemoveMember = async (memberId: string) => {
+    if (window.confirm('Are you sure you want to remove this member?')) {
+      await removeMember(groupId, memberId);
+    }
   };
 
   return (
@@ -70,6 +91,12 @@ const GroupDetailPage = () => {
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
               <PersonIcon sx={{ mr: 1 }} />
               <Typography variant="h6">Members ({members.length})</Typography>
+              <Button variant="contained" sx={{ ml: 'auto' }} onClick={() => setOpenAddMemberDialog(true)}>
+                Add Member
+              </Button>
+              <Button variant="outlined" sx={{ ml: 2 }} onClick={() => router.push(`/groups/${groupId}/settle`)}>
+                Settle Up
+              </Button>
             </Box>
             {members.length > 0 ? (
               <List>
@@ -91,6 +118,9 @@ const GroupDetailPage = () => {
                       }
                       sx={{ ml: 2 }}
                     />
+                    <IconButton edge="end" aria-label="delete" onClick={() => handleRemoveMember(member.id)}>
+                      <DeleteIcon />
+                    </IconButton>
                   </ListItem>
                 ))}
               </List>
@@ -136,6 +166,11 @@ const GroupDetailPage = () => {
           </Paper>
         </Grid>
       </Grid>
+      <AddMemberDialog
+        open={openAddMemberDialog}
+        onClose={() => setOpenAddMemberDialog(false)}
+        onAddMember={handleAddMember}
+      />
     </Container>
   );
 };

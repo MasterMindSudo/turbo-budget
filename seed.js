@@ -1,7 +1,9 @@
 const admin = require('firebase-admin');
 
 // Replace with your service account key file
-const serviceAccount = require('/home/user/turbo-budget/turbo-budget-21f5a-firebase-adminsdk-fbsvc-7bfef5b4df.json');
+// IMPORTANT: Make sure the path to your service account key is correct for your machine.
+// You can download this file from your Firebase project settings.
+const serviceAccount = require('./path/to/your-service-account-file.json');
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)

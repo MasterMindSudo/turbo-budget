@@ -1,7 +1,11 @@
 // src/app/page.tsx
-import { redirect } from 'next/navigation';
+'use client';
 
-// This is the root page, it will redirect to the default group homepage
-export default function HomePage() {
-  redirect('/groups/group1');
+import { redirect } from 'next/navigation';
+import withAuth from '../components/withAuth';
+
+function HomePage() {
+  redirect('/dashboard');
 }
+
+export default withAuth(HomePage);

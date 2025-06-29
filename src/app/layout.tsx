@@ -8,6 +8,8 @@ import { BudgetProvider } from '../context/BudgetProvider';
 import { AppRouterCacheProvider } from '@mui/material-nextjs/v13-appRouter';
 import ClientAppLayout from './client-app-layout';
 
+import { AuthProvider } from '../context/AuthContext';
+
 export const metadata = {
   title: 'Budget App',
   description: 'Family/Personal Budgeting and Bill Splitting App',
@@ -25,11 +27,13 @@ export default function RootLayout({
         <AppRouterCacheProvider>
           <ThemeProvider theme={theme}>
             <CssBaseline />
-            <BudgetProvider>
-              <ClientAppLayout>
-                {children}
-              </ClientAppLayout>
-            </BudgetProvider>
+            <AuthProvider>
+              <BudgetProvider>
+                <ClientAppLayout>
+                  {children}
+                </ClientAppLayout>
+              </BudgetProvider>
+            </AuthProvider>
           </ThemeProvider>
         </AppRouterCacheProvider>
       </body>

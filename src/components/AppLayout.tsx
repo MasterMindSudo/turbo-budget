@@ -36,7 +36,7 @@ const AppLayout: React.FC<AppLayoutProps> = () => {
     setValue(newValue);
     switch (newValue) {
       case 'home':
-        navigate('/groups/group1'); // Navigate to a default group for now
+        navigate('/groups'); // Navigate to the group list page
         break;
       case 'list':
         navigate('/list'); // Placeholder
@@ -44,7 +44,7 @@ const AppLayout: React.FC<AppLayoutProps> = () => {
       case 'edit':
         // This is typically a FAB, so it might open a modal or navigate to a dedicated new expense page.
         // For now, let's navigate to New Expense (full form) if it's the center button.
-        navigate('/groups/group1/expense/new');
+        navigate('/expense/new');
         break;
       case 'budget':
         navigate('/budget'); // Placeholder
@@ -53,7 +53,7 @@ const AppLayout: React.FC<AppLayoutProps> = () => {
         navigate('/todo'); // Placeholder
         break;
       default:
-        navigate('/groups/group1');
+        navigate('/groups');
         break;
     }
   };

@@ -1,5 +1,5 @@
-git reset HEAD~1// src/app/list/page.tsx
-'use client';
+// src/app/list/page.tsx
+'use client'; // This component uses client-side hooks like useRouter and useBudget
 
 import React from 'react';
 import { AppBar, Toolbar, Typography, Container, Box, IconButton, List, ListItem, ListItemText, Divider, Chip } from '@mui/material';
@@ -11,16 +11,23 @@ import moment from 'moment';
 const ListPage: React.FC = () => {
   const router = useRouter();
   const { getExpensesByGroupId, getGroupById, getMembersByGroupId, state } = useBudget();
+  // TODO: In a real application, the group ID should ideally come from the URL
+  // (e.g., /groups/[groupId]/list) or the user should be able to select a group.
+  // For now, it defaults to the first group in the mock data.
+  // If this page is intended to show *all* expenses across *all* groups,
+  // the logic for fetching and grouping expenses would need to be adjusted accordingly.
+  const currentGroupId = state.groups[0]?.id;
 
-  // For simplicity, let's assume we're viewing expenses for the currently selected group (group1)
-  // TODO ⇢ Firebase: In a real app, this page might allow selecting a group or display all expenses for all groups the user is a part of.
-  const currentGroupId = state.groups[0]?.id; // Default to the first group in mock data
   const currentGroup = getGroupById(currentGroupId || '');
   const allExpenses = currentGroup ? getExpensesByGroupId(currentGroup.id) : [];
   const groupMembers = currentGroup ? getMembersByGroupId(currentGroup.id) : [];
 
-  // Group expenses by date
-  const groupedExpenses = allExpenses.sort((a, b) => b.date.getTime() - a.date.getTime()) // Sort by date descending
+  // Memoize grouped expenses to prevent re-calculation on every render
+  // This improves performance, especially with a growing list of expenses.
+  const groupedExpenses = React.useMemo(() => {
+    // Sort by date descending
+    return allExpenses
+      .sort((a, b) => b.date.getTime() - a.date.getTime())
     .reduce((acc, expense) => {
       const dateKey = moment(expense.date).format('YYYY-MM-DD');
       if (!acc[dateKey]) {
@@ -28,7 +35,8 @@ const ListPage: React.FC = () => {
       }
       acc[dateKey].push(expense);
       return acc;
-    }, {} as { [key: string]: typeof allExpenses });
+    }, {} as { [key: string]: typeof allExpenses }); // Type assertion for the accumulator
+  }, [allExpenses]); // Recalculate only when allExpenses array changes
 
   const getMemberDisplayName = (memberId: string) => {
     return groupMembers.find(member => member.id === memberId)?.displayName || 'Unknown';
@@ -37,7 +45,7 @@ const ListPage: React.FC = () => {
   const handleExpenseClick = (expenseId: string) => {
     if (currentGroupId) {
       router.push(`/groups/${currentGroupId}/expense/${expenseId}/edit`);
-    } else {
+    } else { // Fallback if currentGroupId is unexpectedly undefined
       // Handle case where currentGroupId is not available (e.g., show an alert or redirect)
       console.warn('Cannot navigate to edit expense: currentGroupId is undefined.');
     }
@@ -56,6 +64,7 @@ const ListPage: React.FC = () => {
         </Toolbar>
       </AppBar>
       <Container sx={{ py: 2 }}>
+        {/* Display message if no expenses are recorded */}
         {!allExpenses.length && (
           <Typography variant="body1" color="text.secondary" align="center" sx={{ mt: 4 }}>
             No expenses recorded for this group yet.
@@ -63,6 +72,7 @@ const ListPage: React.FC = () => {
         )}
 
         {Object.keys(groupedExpenses).map((dateKey) => (
+          // Box for each date group
           <Box key={dateKey} sx={{ mb: 3 }}>
             <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
               {moment(dateKey).calendar(null, {
@@ -74,12 +84,13 @@ const ListPage: React.FC = () => {
                   sameElse: 'MMM DD, YYYY'
               })}
             </Typography>
+            {/* List of expenses for the current date */}
             <List dense disablePadding sx={{ bgcolor: 'background.paper', borderRadius: 2, boxShadow: 1 }}>
               {groupedExpenses[dateKey].map((expense, index) => (
                 <React.Fragment key={expense.id}>
                   <ListItem
                     alignItems="flex-start"
-                    onClick={() => handleExpenseClick(expense.id)} // Added onClick handler
+                    onClick={() => handleExpenseClick(expense.id)}
                     sx={{ py: 1.5, px: 2, cursor: 'pointer', '&:hover': { backgroundColor: 'action.hover' } }} // Added cursor and hover effect
                   >
                     <ListItemText
@@ -98,7 +109,7 @@ const ListPage: React.FC = () => {
                           <Box sx={{ display: 'flex', alignItems: 'center' }}>
                             <Typography
                               component="span"
-                              variant="body2"
+                              variant="body2" // Display who paid the expense
                               color="text.secondary"
                               sx={{ flexShrink: 0 }} 
                             >
@@ -106,7 +117,7 @@ const ListPage: React.FC = () => {
                             </Typography>
                             {expense.category && (
                               <Chip
-                                label={expense.category}
+                                label={expense.category} // Display expense category as a chip
                                 size="small"
                                 sx={{ ml: 1, height: 20, fontSize: '0.75rem' }}
                               />
@@ -114,12 +125,12 @@ const ListPage: React.FC = () => {
                           </Box>
                           {expense.note && (
                               <Typography component="span" variant="body2" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
-                                  Note: {expense.note}
+                                  Note: {expense.note} {/* Display expense note */}
                               </Typography>
                           )}
                         </Box>
                       }
-                      secondaryTypographyProps={{ component: 'span' }} // FIX: Make ListItemText's internal secondary Typography render a span
+                      secondaryTypographyProps={{ component: 'span' }} // Ensures secondary content renders as a span, preventing common MUI warnings
                     />
                   </ListItem>
                   {index < groupedExpenses[dateKey].length - 1 && <Divider component="li" />} 

@@ -98,6 +98,28 @@ pnpm start
 npm start
 ```
 
+## Budget Page
+
+The budget page, located at `/groups/[groupId]/budget`, provides a dynamic view of the current month's spending compared against a 6-month rolling average. This allows users to gauge their spending habits against their recent history rather than a fixed, arbitrary limit.
+
+### Benchmark Calculation
+
+The benchmark is computed as follows:
+
+1.  **Current Month**: The application fetches the spending snapshot for the current calendar month (e.g., `202506`). This snapshot contains the total spend and a breakdown by category.
+
+2.  **Historical Data**: It then fetches the snapshots for the **previous six full months**.
+
+3.  **Averaging**: The system calculates the average total spend and the average spend for each category across these six months. If data is not available for all six months, the average is based on the number of months for which data exists (from 1 to 6).
+
+4.  **Visualization**: The UI uses this benchmark to:
+    *   Show whether the current overall spending is higher or lower than the average.
+    *   Display a percentage and absolute dollar difference from the average.
+    *   Highlight which categories are over or under their average spend.
+    *   Plot the current month's spending trend against the 6-month average on a line chart.
+
+This data is aggregated and kept up-to-date by a Firebase Cloud Function (`aggregateMonthlySpend`) that triggers on any expense creation, update, or deletion.
+
 ## Firebase Integration (TODO)
 
 This project uses a client-side context with mock data for UI demonstration. To integrate with Firebase, you will need to:

@@ -2,11 +2,11 @@ import React from 'react';
 import { AppBar, Toolbar, Typography, IconButton, Container, Card, CardContent, Fab, Box } from '@mui/material';
 import { Close, Add } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { useBudget } from '../BudgetContext';
+import { useBudget, addGroup } from '../context/BudgetProvider';
 
 const RoomList: React.FC = () => {
   const navigate = useNavigate();
-  const { state, addGroup } = useBudget();
+  const { state, dispatch } = useBudget();
 
   const handleClose = () => {
     navigate(-1); // Go back to the previous page
@@ -15,7 +15,18 @@ const RoomList: React.FC = () => {
   const handleAddRoom = () => {
     // In a real app, this would open a dialog or navigate to a creation form
     const newRoomName = `New Room ${state.groups.length + 1}`;
-    addGroup(newRoomName); // Add a dummy room for now
+    const newGroup = {
+      id: new Date().getTime().toString(),
+      name: newRoomName,
+      members: [
+        {
+          id: '1',
+          displayName: 'You',
+          email: 'you@example.com'
+        }
+      ]
+    };
+    addGroup(dispatch, newGroup);
   };
 
   return (
@@ -57,11 +68,19 @@ const RoomList: React.FC = () => {
               New Room
             </Typography>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-              {[<Typography component="span" role="img" aria-label="lightbulb" sx={{ mr: 1.5, fontSize: '1.2rem' }}>💡</Typography>, 'What are Rooms?'], [<Typography component="span" role="img" aria-label="lightbulb" sx={{ mr: 1.5, fontSize: '1.2rem' }}>💡</Typography>, 'Adding/Deleting Rooms'], [<Typography component="span" role="img" aria-label="lightbulb" sx={{ mr: 1.5, fontSize: '1.2rem' }}>💡</Typography>, 'Managing Members'], [<Typography component="span" role="img" aria-label="lightbulb" sx={{ mr: 1.5, fontSize: '1.2rem' }}>💡</Typography>, 'Cannot Access my Room']].map((text, index) => (
+              {[
+                { icon: '💡', text: 'What are Rooms?' },
+                { icon: '💡', text: 'Adding/Deleting Rooms' },
+                { icon: '💡', text: 'Managing Members' },
+                { icon: '💡', text: 'Cannot Access my Room' },
+              ].map((item, index) => (
                 <Card key={index} sx={{ bgcolor: 'white', borderRadius: 2, boxShadow: 1 }}>
                   <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
                     <Typography variant="body1" sx={{ display: 'flex', alignItems: 'center' }}>
-                      {text}
+                      <Typography component="span" role="img" aria-label="lightbulb" sx={{ mr: 1.5, fontSize: '1.2rem' }}>
+                        {item.icon}
+                      </Typography>
+                      {item.text}
                     </Typography>
                   </CardContent>
                 </Card>
