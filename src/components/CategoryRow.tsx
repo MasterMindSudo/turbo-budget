@@ -39,7 +39,7 @@ const CategoryRow: React.FC<CategoryRowProps> = ({ icon, name, spent, average })
       <ListItemText
         primary={<Typography variant="body1">{name}</Typography>}
         secondary={
-          <Tooltip title={`6-Month Average: $${average.toFixed(2)}`}>
+          <Tooltip title={`6-Month Average: ${average.toFixed(2)}`}>
             <Box sx={{ mt: 0.5 }}>
               <LinearProgress
                 variant="determinate"
@@ -54,6 +54,7 @@ const CategoryRow: React.FC<CategoryRowProps> = ({ icon, name, spent, average })
             </Box>
           </Tooltip>
         }
+        secondaryTypographyProps={{ component: 'div' }}
       />
       <Box sx={{ textAlign: 'right', ml: 2, minWidth: 90 }}>
         <Typography variant="body1" fontWeight="medium">
