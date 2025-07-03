@@ -20,6 +20,8 @@ import {
   Grid,
 } from '@mui/material';
 import { format } from 'date-fns';
+import dayjs from 'dayjs';
+import { MONTH_ID_FORMAT } from '@/constants';
 
 const BudgetPage: React.FC = () => {
   const params = useParams();
@@ -48,13 +50,15 @@ const BudgetPage: React.FC = () => {
       // 1. Use the month explicitly passed in (e.g., from the dropdown).
       // 2. If no month is passed, use the most recent month available from the database.
       // 3. If no data exists at all, fall back to the current system month.
-      const monthToFetch = monthOverride || (available.length > 0 ? available[0] : format(new Date(), 'yyyy-MM'));
+      const monthToFetch = monthOverride || (available.length > 0 ? available[0] : dayjs().format(MONTH_ID_FORMAT));
       setSelectedMonth(monthToFetch);
 
       // Fetch the benchmark data for the determined month.
-      const monthId = format(new Date(monthToFetch), 'yyyyMM');
-      const data = await fetchBudgetBenchmark(groupId, monthId);
-      setBenchmarkData(data);
+      const monthId = dayjs(monthToFetch).format(MONTH_ID_FORMAT);
+      fetchBudgetBenchmark(groupId, monthId)
+        .then((data) => {
+          setBenchmarkData(data);
+        })
 
     } catch (err) {
       console.error('Failed to fetch budget data:', err);
@@ -167,7 +171,7 @@ const BudgetPage: React.FC = () => {
             >
               {availableMonths.map((month) => (
                 <MenuItem key={month} value={month}>
-                  {format(new Date(month), 'MMMM yyyy')}
+                  {dayjs(month, MONTH_ID_FORMAT).format('MMM YYYY')}
                 </MenuItem>
               ))}
             </Select>

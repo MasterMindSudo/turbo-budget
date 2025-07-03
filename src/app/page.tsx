@@ -6,6 +6,7 @@ import withAuth from '../components/withAuth';
 
 function HomePage() {
   redirect('/dashboard');
+  return <></>
 }
 
 export default withAuth(HomePage);

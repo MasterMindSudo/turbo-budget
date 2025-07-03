@@ -1,0 +1,1 @@
+export const MONTH_ID_FORMAT = 'YYYYMM'

@@ -2,6 +2,8 @@
 import { db } from './firebase'
 import { collection, getDocs, query, where, Timestamp, orderBy } from 'firebase/firestore'
 import { format, subMonths, startOfMonth, endOfMonth, isValid } from 'date-fns'
+import dayjs from 'dayjs'
+import { MONTH_ID_FORMAT } from '@/constants'
 
 export interface MonthlySpend {
   id: string // yyyyMM
@@ -90,7 +92,7 @@ export async function getAvailableMonths(groupId: string): Promise<string[]> {
     const parsedDate = parseDate(data.date);
 
     if (parsedDate) {
-      const monthString = format(parsedDate, 'yyyy-MM');
+      const monthString = dayjs(parsedDate).format(MONTH_ID_FORMAT);
       if (!months.has(monthString)) {
         console.log(`[getAvailableMonths] Found month: ${monthString}`);
         months.add(monthString);
@@ -111,16 +113,17 @@ export async function fetchBudgetBenchmark(
 ): Promise<BenchmarkData> {
   console.log(`[fetchBudgetBenchmark] Fetching for group ${groupId}, month ${monthId}`);
 
-  const currentMonthStart = startOfMonth(new Date(parseInt(monthId.slice(0, 4)), parseInt(monthId.slice(4, 6)) - 1));
-  const currentMonthEnd = endOfMonth(currentMonthStart);
+  const currentMonth = dayjs(monthId, MONTH_ID_FORMAT)
+  const currentMonthStart = currentMonth.startOf('month');
+  const currentMonthEnd = currentMonth.endOf('month');
 
-  const sevenMonthsAgo = subMonths(currentMonthStart, 6); // Start of the 7th month back
+  const sevenMonthsAgo = currentMonth.subtract(7, 'month'); // Start of the 7th month back
 
   const expensesRef = collection(db, `groups/${groupId}/expenses`);
   const q = query(
     expensesRef,
-    where('date', '>=', Timestamp.fromDate(sevenMonthsAgo)),
-    where('date', '<=', Timestamp.fromDate(currentMonthEnd))
+    where('date', '>=', Timestamp.fromDate(sevenMonthsAgo.toDate())),
+    where('date', '<=', Timestamp.fromDate(currentMonthEnd.toDate()))
   );
 
   const querySnapshot = await getDocs(q);
@@ -139,8 +142,8 @@ export async function fetchBudgetBenchmark(
   const monthlyData: Record<string, MonthlySpend> = {};
 
   for (let i = -1; i < 6; i++) {
-    const month = subMonths(currentMonthStart, i);
-    const monthKey = format(month, 'yyyyMM');
+    const month = currentMonth.subtract(i, 'month');
+    const monthKey = month.format(MONTH_ID_FORMAT);
     monthlyData[monthKey] = {
       id: monthKey,
       total: 0,
@@ -149,7 +152,7 @@ export async function fetchBudgetBenchmark(
   }
 
   allExpenses.forEach((expense) => {
-    const expenseMonthId = format(expense.date, 'yyyyMM');
+    const expenseMonthId = dayjs(expense.date).format(MONTH_ID_FORMAT);
     if (monthlyData[expenseMonthId]) {
       monthlyData[expenseMonthId].total += expense.amount;
       const category = expense.category || 'uncategorized';
