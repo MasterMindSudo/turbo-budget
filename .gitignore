@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# service account key
+turbo-budget-21f5a-firebase-adminsdk-fbsvc-2d2aa428e7.json
+turbo*.json

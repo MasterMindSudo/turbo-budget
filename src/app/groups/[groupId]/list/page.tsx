@@ -1,25 +1,22 @@
-// src/app/list/page.tsx
+// src/app/groups/[groupId]/list/page.tsx
 'use client'; // This component uses client-side hooks like useRouter and useBudget
 
 import React from 'react';
 import { AppBar, Toolbar, Typography, Container, Box, IconButton, List, ListItem, ListItemText, Divider, Chip } from '@mui/material';
 import { ArrowBack, AttachMoney } from '@mui/icons-material';
-import { useRouter } from 'next/navigation';
-import { useBudget } from '../../context/BudgetProvider';
+import { useRouter, useParams } from 'next/navigation'; // Import useParams
+import { useBudget } from '../../../../context/BudgetProvider'; // Adjust import path
 import moment from 'moment';
 
 const ListPage: React.FC = () => {
   const router = useRouter();
-  const { getExpensesByGroupId, getGroupById, getMembersByGroupId, state } = useBudget();
-  // TODO: In a real application, the group ID should ideally come from the URL
-  // (e.g., /groups/[groupId]/list) or the user should be able to select a group.
-  // For now, it defaults to the first group in the mock data.
-  // If this page is intended to show *all* expenses across *all* groups,
-  // the logic for fetching and grouping expenses would need to be adjusted accordingly.
-  const currentGroupId = state.groups[0]?.id;
+  const params = useParams(); // Get params from Next.js navigation
+  const groupId = params?.groupId as string; // Extract groupId
 
-  const currentGroup = getGroupById(currentGroupId || '');
-  const allExpenses = currentGroup ? getExpensesByGroupId(currentGroup.id) : [];
+  const { getExpensesByGroupId, getGroupById, getMembersByGroupId } = useBudget();
+
+  const currentGroup = getGroupById(groupId || '');
+  const allExpenses = React.useMemo(() => currentGroup ? getExpensesByGroupId(currentGroup.id) : [], [currentGroup, getExpensesByGroupId]);
   const groupMembers = currentGroup ? getMembersByGroupId(currentGroup.id) : [];
 
   // Memoize grouped expenses to prevent re-calculation on every render
@@ -27,9 +24,13 @@ const ListPage: React.FC = () => {
   const groupedExpenses = React.useMemo(() => {
     // Sort by date descending
     return allExpenses
-      .sort((a, b) => b.date.getTime() - a.date.getTime())
+      .sort((a, b) => {
+        if (!a.date) return 1;
+        if (!b.date) return -1;
+        return (b.date as Timestamp).toMillis() - (a.date as Timestamp).toMillis()
+      })
     .reduce((acc, expense) => {
-      const dateKey = moment(expense.date).format('YYYY-MM-DD');
+      const dateKey = moment((expense.date as Timestamp).toDate()).format('YYYY-MM-DD');
       if (!acc[dateKey]) {
         acc[dateKey] = [];
       }
@@ -43,11 +44,11 @@ const ListPage: React.FC = () => {
   };
 
   const handleExpenseClick = (expenseId: string) => {
-    if (currentGroupId) {
-      router.push(`/groups/${currentGroupId}/expense/${expenseId}/edit`);
-    } else { // Fallback if currentGroupId is unexpectedly undefined
-      // Handle case where currentGroupId is not available (e.g., show an alert or redirect)
-      console.warn('Cannot navigate to edit expense: currentGroupId is undefined.');
+    if (groupId) { // Use the extracted groupId
+      router.push(`/groups/${groupId}/expense/${expenseId}/edit`);
+    } else { // Fallback if groupId is unexpectedly undefined
+      // Handle case where groupId is not available (e.g., show an alert or redirect)
+      console.warn('Cannot navigate to edit expense: groupId is undefined.');
     }
   };
 
@@ -113,7 +114,7 @@ const ListPage: React.FC = () => {
                               color="text.secondary"
                               sx={{ flexShrink: 0 }} 
                             >
-                              Paid by: {getMemberDisplayName(expense.paidBy)}
+                              Paid by: {expense.paidBy ? getMemberDisplayName(expense.paidBy) : 'Unknown'}
                             </Typography>
                             {expense.category && (
                               <Chip

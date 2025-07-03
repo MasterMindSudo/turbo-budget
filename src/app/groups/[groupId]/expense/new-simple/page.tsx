@@ -13,7 +13,7 @@ import { useBudget } from '../../../../../context/BudgetProvider';
 const NewExpenseCompactPage: React.FC = () => {
   const router = useRouter();
   const params = useParams();
-  const groupId = params.groupId as string;
+  const groupId = params?.groupId as string;
   const { getGroupById, addExpense } = useBudget();
 
   const currentGroup = getGroupById(groupId);
@@ -68,8 +68,8 @@ const NewExpenseCompactPage: React.FC = () => {
     );
   };
 
-  const handlePaidByChange = (memberId: string, value: string) => {
-    setPaidBy(value);
+  const handlePaidByChange = (memberId: string, value: string | number) => {
+    setPaidBy(value as string);
   };
 
   const handleAddExpense = () => {
@@ -105,7 +105,7 @@ const NewExpenseCompactPage: React.FC = () => {
       date: new Date(), // Current date
       participants: actualParticipants.map(p => ({ memberId: p.memberId, share: p.share })),
       // receiptUrl, category, note, isRecurring are not part of compact form
-    };
+    } as const;
     addExpense(newExpense, groupId);
     router.back(); // Go back after adding
   };
@@ -146,6 +146,7 @@ const NewExpenseCompactPage: React.FC = () => {
           inputProps={{ style: { fontSize: '2rem', textAlign: 'right', fontWeight: 'bold' } }}
           sx={{ mb: 3 }}
           fullWidth
+          variant="standard"
         />
 
         {/* What kind of expense? - Link to full form */}
@@ -217,7 +218,7 @@ const NewExpenseCompactPage: React.FC = () => {
           <MemberListItem
             id="joint-account"
             displayName="Joint Account"
-            avatarUrl="/public/AccountBalanceWallet.svg" // Placeholder for joint account avatar
+            avatarUrl="/AccountBalanceWallet.svg" // Placeholder for joint account avatar
             mode="radio"
             onChange={handlePaidByChange}
             isSelected={paidBy === 'joint-account'}

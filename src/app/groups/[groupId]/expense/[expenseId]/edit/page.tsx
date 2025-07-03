@@ -10,8 +10,8 @@ import { Container, Typography, CircularProgress, Box } from '@mui/material';
 const EditExpensePage: React.FC = () => {
   const router = useRouter();
   const params = useParams();
-  const groupId = params.groupId as string;
-  const expenseId = params.expenseId as string;
+  const groupId = params?.groupId as string;
+  const expenseId = params?.expenseId as string;
 
   // Note: getExpenseById and updateExpense must be implemented in your BudgetProvider context.
   const { getGroupById, getExpenseById, updateExpense } = useBudget();
@@ -19,12 +19,12 @@ const EditExpensePage: React.FC = () => {
   const currentGroup = getGroupById(groupId);
   const expenseToEdit = getExpenseById(expenseId);
 
-  const handleUpdateExpense = (expenseData: Omit<Expense, 'id'>) => {
+  const handleUpdateExpense = (expenseData: Omit<Expense, 'id' | 'currency'> & { currency?: string }) => {
     if (!groupId || !expenseId) {
       console.error('Group or Expense ID is missing.');
       return;
     }
-    updateExpense({ ...expenseData, id: expenseId }, groupId);
+    updateExpense({ ...expenseData, id: expenseId, groupId, currency: 'USD' });
     router.back();
   };
 

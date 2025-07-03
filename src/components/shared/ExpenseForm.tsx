@@ -33,7 +33,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ group, initialExpense, onSubm
   const [selectedCategory, setSelectedCategory] = React.useState<typeof categories[0] | null>(
     categories.find(cat => cat.name === initialExpense?.category) || categories.find(cat => cat.id === 'food') || null
   );
-  const [expenseDate, setExpenseDate] = React.useState<Moment | null>(initialExpense ? moment(initialExpense.date) : moment());
+  const [expenseDate, setExpenseDate] = React.useState<Moment | null>(initialExpense ? moment((initialExpense.date as Timestamp)?.toDate()) : moment());
   const [note, setNote] = React.useState(initialExpense?.note || '');
   const [isRecurring, setIsRecurring] = React.useState(initialExpense?.isRecurring || false);
   const [divideExpense, setDivideExpense] = React.useState(initialExpense ? initialExpense.participants.length > 0 : true);
@@ -155,7 +155,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ group, initialExpense, onSubm
       paidBy: paidBy,
       date: expenseDate ? expenseDate.toDate() : new Date(),
       participants: actualParticipants.map(p => ({ memberId: p.memberId, share: p.share })),
-      category: selectedCategory?.name,
+      category: selectedCategory?.id,
       note: note,
       isRecurring: isRecurring,
     };
@@ -304,7 +304,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ group, initialExpense, onSubm
               .map((member) => (
               <MemberListItem key={member.id} id={member.id} displayName={member.displayName} avatarUrl={member.avatarUrl} mode='radio' onChange={handlePaidByChange} isSelected={paidBy === member.id} currencySymbol='$' value={amount || 0} />
             ))}
-            <MemberListItem id='joint-account' displayName='Joint Account' avatarUrl='/public/AccountBalanceWallet.svg' mode='radio' onChange={handlePaidByChange} isSelected={paidBy === 'joint-account'} currencySymbol='$' value={amount || 0} />
+            <MemberListItem id='joint-account' displayName='Joint Account' avatarUrl='/AccountBalanceWallet.svg' mode='radio' onChange={handlePaidByChange} isSelected={paidBy === 'joint-account'} currencySymbol='$' value={amount || 0} />
           </List>
           <Typography variant='body2' color='warning.main' sx={{ mt: 1, mb: 3, cursor: 'pointer', display: 'flex', alignItems: 'center' }} onClick={() => console.log('Create virtual accounts for temporary cover')}>
             <AddCircle sx={{ mr: 0.5 }} fontSize='small' /> Create virtual accounts

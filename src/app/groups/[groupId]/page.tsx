@@ -1,7 +1,8 @@
 // src/app/groups/[groupId]/page.tsx
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import Image from 'next/image';
 import { useParams, useRouter } from 'next/navigation'; // Added useRouter
 import { Container, Typography, Box, Grid, Paper, List, ListItem, ListItemText, Avatar, Chip, Button, IconButton } from '@mui/material';
 import GroupIcon from '@mui/icons-material/Group';
@@ -11,17 +12,34 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import { useBudget } from '@/context/BudgetProvider'; // Adjust path as needed
 import moment from 'moment';
 import AddMemberDialog from '@/components/shared/AddMemberDialog';
+import { Group, Member, Expense } from '@/context/BudgetProvider';
 
 const GroupDetailPage = () => {
   const params = useParams();
   const router = useRouter(); // Initialize useRouter
   const groupId = (params?.groupId as string) || '';
-  const { getGroupById, getMembersByGroupId, getExpensesByGroupId, addMember, addOfflineMember } = useBudget();
+  const { getGroupById, getMembersByGroupId, getExpensesByGroupId, addMember, addOfflineMember, removeMember } = useBudget();
   const [openAddMemberDialog, setOpenAddMemberDialog] = React.useState(false);
 
-  const group = getGroupById(groupId);
-  const members = getMembersByGroupId(groupId);
-  const expenses = getExpensesByGroupId(groupId);
+  const [group, setGroup] = useState<Group | null>(null);
+  const [members, setMembers] = useState<Member[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+
+  const fetchGroupData = React.useCallback(() => {
+    const groupData = getGroupById(groupId);
+    setGroup(groupData || null);
+
+    if (groupData) {
+      const membersData = getMembersByGroupId(groupId);
+      const expensesData = getExpensesByGroupId(groupId);
+      setMembers(membersData);
+      setExpenses(expensesData);
+    }
+  }, [groupId, getGroupById, getMembersByGroupId, getExpensesByGroupId]);
+
+  useEffect(() => {
+    fetchGroupData();
+  }, [fetchGroupData]);
 
   if (!group) {
     return (
@@ -49,12 +67,14 @@ const GroupDetailPage = () => {
     } else {
       await addOfflineMember(groupId, emailOrName);
     }
+    fetchGroupData();
     setOpenAddMemberDialog(false);
   };
 
   const handleRemoveMember = async (memberId: string) => {
     if (window.confirm('Are you sure you want to remove this member?')) {
       await removeMember(groupId, memberId);
+      fetchGroupData();
     }
   };
 
@@ -79,7 +99,7 @@ const GroupDetailPage = () => {
             </Typography>
             {group.coverPhotoUrl && (
               <Box sx={{ mt: 2 }}>
-                <img src={group.coverPhotoUrl} alt="Group Cover" style={{ maxWidth: '100%', borderRadius: '8px' }} />
+                <Image src={group.coverPhotoUrl} alt="Group Cover" width={500} height={300} style={{ maxWidth: '100%', borderRadius: '8px' }} />
               </Box>
             )}
           </Paper>
@@ -107,7 +127,7 @@ const GroupDetailPage = () => {
                       primary={member.displayName}
                       secondary={
                         <Box component="span">
-                          Joined: {moment(member.joinedAt).format('MMM D, YYYY')}
+                          Joined: {moment((member.joinedAt as Timestamp)?.toDate()).format('MMM D, YYYY')}
                           <Chip
                             label={member.status}
                             size="small"
@@ -154,7 +174,7 @@ const GroupDetailPage = () => {
                         {expense.amount.toFixed(2)} {expense.currency}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
-                        {moment(expense.date).format('MMM D, YYYY')}
+                        {moment((expense.date as Timestamp)?.toDate()).format('MMM D, YYYY')}
                       </Typography>
                     </Box>
                   </ListItem>

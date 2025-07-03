@@ -7,8 +7,13 @@ import { Container, Typography, Box, Card, CardContent, Button, Grid } from '@mu
 import { useRouter } from 'next/navigation';
 
 const DashboardPage = () => {
-  const { state } = useBudget();
+  const { state, setActiveGroup } = useBudget();
   const router = useRouter();
+
+  const handleGroupClick = (groupId: string) => {
+    setActiveGroup(groupId);
+    router.push(`/groups/${groupId}`);
+  };
 
   return (
     <Container maxWidth="md" sx={{ py: 4 }}>
@@ -24,9 +29,9 @@ const DashboardPage = () => {
         <Grid container spacing={3}>
           {state.groups.map((group) => (
             <Grid item xs={12} sm={6} md={4} key={group.id}>
-              <Card 
-                sx={{ height: '100%', cursor: 'pointer', '&:hover': { boxShadow: 6 } }} 
-                onClick={() => router.push(`/groups/${group.id}`)}>
+              <Card
+                sx={{ height: '100%', cursor: 'pointer', '&:hover': { boxShadow: 6 } }}
+                onClick={() => handleGroupClick(group.id)}>
                 <CardContent>
                   <Typography variant="h5" component="div">{group.name}</Typography>
                   <Typography color="text.secondary">{group.members.length} members</Typography>

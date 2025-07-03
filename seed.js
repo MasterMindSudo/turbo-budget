@@ -26,7 +26,8 @@ async function seedDatabase() {
   const groupId = newGroupRef.id;
   await newGroupRef.set({
     name: 'Sample Family Budget',
-    createdAt: admin.firestore.FieldValue.serverTimestamp()
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    memberUserIds: [demoUserId],
   });
 
   // Add the demo user as an accepted member

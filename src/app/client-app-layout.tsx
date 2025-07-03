@@ -3,36 +3,35 @@
 'use client'; // This is a client component
 
 import React from 'react';
-import { AppBar, Toolbar, Box, BottomNavigation, BottomNavigationAction, Paper, Fab } from '@mui/material';
+import { AppBar, Toolbar, Box, BottomNavigation, BottomNavigationAction, Paper } from '@mui/material';
 import { usePathname, useRouter } from 'next/navigation';
 import HomeIcon from '@mui/icons-material/Home';
 import FormatListBulletedIcon from '@mui/icons-material/FormatListBulleted';
 import EditIcon from '@mui/icons-material/Edit';
 import PieChartIcon from '@mui/icons-material/PieChart';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import PersonIcon from '@mui/icons-material/Person';
 import MailIcon from '@mui/icons-material/Mail';
-import Link from 'next/link';
+import { useBudget } from '../context/BudgetProvider';
 
 interface ClientAppLayoutProps {
   children: React.ReactNode;
 }
 
 const ClientAppLayout: React.FC<ClientAppLayoutProps> = ({ children }) => {
-  console.log('ClientAppLayout component rendered');
   const router = useRouter();
   const pathname = usePathname();
+  const { state } = useBudget();
+  const { activeGroup } = state;
 
-  // Determine current active tab based on path
   const getActiveTab = (currentPath: string) => {
-    if (currentPath.includes('/groups') && !currentPath.includes('/expense') && !currentPath.includes('/budget')) return 'home';
+    if (currentPath.includes('/dashboard')) return 'home';
     if (currentPath.includes('/list')) return 'list';
     if (currentPath.includes('/budget')) return 'budget';
-    if (currentPath.includes('/todo')) return 'todo';
     if (currentPath.includes('/profile')) return 'profile';
     if (currentPath.includes('/invitations')) return 'invitations';
-    if (currentPath.includes('/expense/new')) return 'edit'; // Central FAB often maps to new expense
-    return 'home'; // Default fallback
+    if (currentPath.includes('/expense/new')) return 'edit';
+    if (currentPath.includes('/groups/')) return 'home';
+    return 'home';
   };
 
   const [value, setValue] = React.useState(getActiveTab(pathname || ''));
@@ -43,21 +42,23 @@ const ClientAppLayout: React.FC<ClientAppLayoutProps> = ({ children }) => {
 
   const handleNavigation = (event: React.SyntheticEvent, newValue: string) => {
     setValue(newValue);
+    if (!activeGroup && !['home', 'profile', 'invitations'].includes(newValue)) {
+      router.push('/dashboard');
+      return;
+    }
+
     switch (newValue) {
       case 'home':
-        router.push('/groups');
+        router.push('/dashboard');
         break;
       case 'list':
-        router.push('/list'); // Placeholder route
+        router.push(`/groups/${activeGroup}/list`);
         break;
       case 'edit':
-        router.push('/expense/new');
+        router.push(`/groups/${activeGroup}/expense/new`);
         break;
       case 'budget':
-        router.push('/groups/group1/budget'); // Updated route
-        break;
-      case 'todo':
-        router.push('/todo'); // Placeholder route
+        router.push(`/groups/${activeGroup}/budget`);
         break;
       case 'profile':
         router.push('/profile');
@@ -66,26 +67,21 @@ const ClientAppLayout: React.FC<ClientAppLayoutProps> = ({ children }) => {
         router.push('/invitations');
         break;
       default:
-        router.push('/groups');
+        router.push('/dashboard');
         break;
     }
   };
 
-  const isExpenseFormPage = pathname?.includes('/groups/') && (pathname?.includes('/expense/new') || pathname?.includes('/expense/edit'));
+  const isExpenseFormPage = pathname?.includes('/expense/new') || pathname?.includes('/expense/edit');
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-      {/* The main content (children) will render here, including their own AppBar if needed.
-          The top AppBar here is primarily to provide the height and consistent background.
-          Individual pages will place their specific AppBars inside their content.
-      */}
       <AppBar position="static" color="inherit" elevation={1} sx={{ backgroundColor: 'white', display: 'none' }}>
         <Toolbar sx={{ justifyContent: 'center' }}>
-          {/* Placeholder for top app bar content if needed globally */}
         </Toolbar>
       </AppBar>
 
-      <Box component="main" sx={{ flexGrow: 1, pb: isExpenseFormPage ? 0 : '56px' }}> {/* Padding for bottom navigation */}
+      <Box component="main" sx={{ flexGrow: 1, pb: isExpenseFormPage ? 0 : '56px' }}>
         {children}
       </Box>
 
@@ -102,12 +98,14 @@ const ClientAppLayout: React.FC<ClientAppLayoutProps> = ({ children }) => {
               label="Edit"
               value="edit"
               icon={<EditIcon />}
-              sx={{
-                minWidth: 'auto',
-                '& .MuiBottomNavigationAction-label': {
-                  fontSize: '0.75rem',
-                },
-              }}
+              sx={
+                {
+                  minWidth: 'auto',
+                  '& .MuiBottomNavigationAction-label': {
+                    fontSize: '0.75rem',
+                  },
+                }
+              }
             />
             <BottomNavigationAction label="Budget" value="budget" icon={<PieChartIcon />} />
             <BottomNavigationAction label="Profile" value="profile" icon={<PersonIcon />} />

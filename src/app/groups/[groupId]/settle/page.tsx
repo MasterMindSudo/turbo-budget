@@ -9,7 +9,7 @@ import { settleDebts } from '@/lib/settle';
 import { Container, Typography, Box, Paper, List, ListItem, ListItemText, Avatar, Chip, Button, Select, MenuItem, FormControl, InputLabel } from '@mui/material';
 import moment from 'moment';
 
-import { collection, addDoc, query, where, getDocs, onSnapshot, writeBatch, doc } from 'firebase/firestore';
+import { collection, addDoc, query, where, getDocs, onSnapshot, writeBatch, doc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 const SettleUpPage = () => {
@@ -29,7 +29,10 @@ const SettleUpPage = () => {
     setSelectedMonth(event.target.value as string);
   };
 
-  const filteredExpenses = expenses.filter(expense => moment(expense.date).format('YYYY-MM') === selectedMonth);
+  const filteredExpenses = expenses.filter(expense => {
+    const expenseDate = (expense.date as Timestamp)?.toDate();
+    return moment(expenseDate).format('YYYY-MM') === selectedMonth;
+  });
   const transactions = settleDebts(filteredExpenses, members);
 
   const getMemberName = (memberId: string) => {
@@ -38,15 +41,17 @@ const SettleUpPage = () => {
   };
 
   const handleProposeSettlement = async () => {
+    const settlementDate = Timestamp.fromDate(moment(selectedMonth).startOf('month').toDate());
     const settlementsCollection = collection(db, 'settlements');
-    for (const transaction of transactions) {
-      await addDoc(settlementsCollection, {
-        ...transaction,
-        groupId,
-        month: selectedMonth,
-        status: 'pending',
-      });
-    }
+    
+    console.log('Proposing settlement with transactions:', transactions);
+
+    await addDoc(settlementsCollection, {
+      transactions,
+      groupId,
+      month: settlementDate,
+      status: 'pending',
+    });
   };
 
   const handleResetSettlement = async () => {
@@ -59,18 +64,45 @@ const SettleUpPage = () => {
   };
 
   React.useEffect(() => {
+    console.log('SettlePage useEffect triggered.');
+    console.log('Auth user:', user);
+    console.log('Group ID:', groupId);
+    console.log('Selected month:', selectedMonth);
+
+    if (!user || !groupId) {
+      console.log('Skipping snapshot listener: user or groupId is missing.');
+      return;
+    }
+
+    const startOfMonth = moment(selectedMonth).startOf('month').toDate();
+    const endOfMonth = moment(selectedMonth).endOf('month').toDate();
+
+    console.log('Querying settlements between:', startOfMonth, 'and', endOfMonth);
+
     const settlementsRef = collection(db, 'settlements');
-    const q = query(settlementsRef, where('groupId', '==', groupId), where('month', '==', selectedMonth));
+    const q = query(
+      settlementsRef,
+      where('groupId', '==', groupId),
+      where('month', '>=', startOfMonth),
+      where('month', '<=', endOfMonth)
+    );
+
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      console.log('Successfully received snapshot.');
       const fetchedSettlements: any[] = [];
       querySnapshot.forEach((doc) => {
         fetchedSettlements.push({ id: doc.id, ...doc.data() });
       });
       setSettlements(fetchedSettlements);
+    }, (error) => {
+      console.error("Error in snapshot listener:", error);
     });
 
-    return () => unsubscribe();
-  }, [groupId, selectedMonth]);
+    return () => {
+      console.log('Cleaning up snapshot listener.');
+      unsubscribe();
+    };
+  }, [groupId, selectedMonth, user]);
 
   return (
     <Container maxWidth="md" sx={{ mt: 4 }}>
@@ -87,7 +119,7 @@ const SettleUpPage = () => {
           label="Month"
           onChange={handleMonthChange as any}
         >
-          {[...new Set(expenses.map(e => moment(e.date).format('YYYY-MM')))].map(month => (
+          {[...new Set(expenses.map(e => moment((e.date as Timestamp)?.toDate()).format('YYYY-MM')))].map(month => (
             <MenuItem key={month} value={month}>
               {moment(month).format('MMMM YYYY')}
             </MenuItem>
@@ -111,27 +143,27 @@ const SettleUpPage = () => {
         </Typography>
         {settlements.length > 0 ? (
           <List>
-            {settlements.map((settlement, index) => (
+            {settlements[0].transactions.map((transaction: any, index: number) => (
               <ListItem key={index}>
                 <ListItemText
-                  primary={`${getMemberName(settlement.from)} owes ${getMemberName(settlement.to)}`}
-                  secondary={`${settlement.amount.toFixed(2)}`}
+                  primary={`${getMemberName(transaction.from)} owes ${getMemberName(transaction.to)}`}
+                  secondary={`${transaction.amount.toFixed(2)}`}
                 />
-                {settlement.status === 'pending' && (
+                {settlements[0].status === 'pending' && (
                   <Button
                     variant="contained"
-                    onClick={() => confirmSettlement(settlement.id)}
+                    onClick={() => confirmSettlement(settlements[0].id)}
                     disabled={(
-                      user?.uid !== settlement.to &&
-                      user?.uid !== settlement.from &&
-                      !members.find(m => m.id === settlement.from)?.isOffline &&
-                      !members.find(m => m.id === settlement.to)?.isOffline
+                      user?.uid !== transaction.to &&
+                      user?.uid !== transaction.from &&
+                      !members.find(m => m.id === transaction.from)?.isOffline &&
+                      !members.find(m => m.id === transaction.to)?.isOffline
                     )}
                   >
                     Confirm
                   </Button>
                 )}
-                {settlement.status === 'confirmed' && (
+                {settlements[0].status === 'confirmed' && (
                   <Chip label="Confirmed" color="success" />
                 )}
               </ListItem>
