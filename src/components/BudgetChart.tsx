@@ -14,7 +14,7 @@ import {
 } from '@mui/material'
 import { ExpandMore as ExpandMoreIcon } from '@mui/icons-material'
 import { MonthlySpend } from '@/lib/budget'
-import { format } from 'date-fns'
+import dayjs from 'dayjs'
 
 // Dynamically import Recharts to reduce initial bundle size
 const ResponsiveContainer = dynamic(
@@ -44,7 +44,7 @@ const BudgetChart: React.FC<BudgetChartProps> = ({ thisMonthHistory, sixMonthAvg
   const [expanded, setExpanded] = useState(true)
 
   const chartData = thisMonthHistory.map(item => ({
-    name: format(new Date(item.id.slice(0, 4), parseInt(item.id.slice(4, 6)) - 1), 'MMM'),
+    name: dayjs(item.id).format('MMM'),
     Spent: item.total,
     '6-Mo Avg': sixMonthAvg,
   }))
