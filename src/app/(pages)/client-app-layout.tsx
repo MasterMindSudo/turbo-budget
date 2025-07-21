@@ -3,7 +3,18 @@
 'use client'; // This is a client component
 
 import React from 'react';
-import { AppBar, Toolbar, Box, BottomNavigation, BottomNavigationAction, Paper } from '@mui/material';
+import {
+  AppBar,
+  Toolbar,
+  Box,
+  BottomNavigation,
+  BottomNavigationAction,
+  Paper,
+  Card,
+  CardContent,
+  useTheme,
+  useMediaQuery
+} from '@mui/material';
 import { usePathname, useRouter } from 'next/navigation';
 import HomeIcon from '@mui/icons-material/Home';
 import FormatListBulletedIcon from '@mui/icons-material/FormatListBulleted';
@@ -18,6 +29,9 @@ interface ClientAppLayoutProps {
 }
 
 const ClientAppLayout: React.FC<ClientAppLayoutProps> = ({ children }) => {
+  const theme = useTheme();
+  const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
+
   const router = useRouter();
   const pathname = usePathname();
   const { state } = useBudget();
@@ -75,44 +89,71 @@ const ClientAppLayout: React.FC<ClientAppLayoutProps> = ({ children }) => {
   const isExpenseFormPage = pathname?.includes('/expense/new') || pathname?.includes('/expense/edit');
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-      <AppBar position="static" color="inherit" elevation={1} sx={{ backgroundColor: 'white', display: 'none' }}>
-        <Toolbar sx={{ justifyContent: 'center' }}>
-        </Toolbar>
-      </AppBar>
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        height: '100svh',
+      }}
+    >
+      <Card
+        sx={{
+          margin: '1rem',
+          maxWidth: isDesktop ? theme.breakpoints.values.md : 'calc(100% - 2rem)',
+          width: '100%',
+          flexGrow: 1,
+        }}
+      >
+        <CardContent>
+          <AppBar position="static" color="inherit" elevation={1} sx={{ backgroundColor: 'white', display: 'none' }}>
+            <Toolbar sx={{ justifyContent: 'center' }}>
+            </Toolbar>
+          </AppBar>
 
-      <Box component="main" sx={{ flexGrow: 1, pb: isExpenseFormPage ? 0 : '56px' }}>
-        {children}
-      </Box>
+          <Box component="main" sx={{ flexGrow: 1, pb: isExpenseFormPage ? 0 : '56px' }}>
+            {children}
+          </Box>
 
-      {!isExpenseFormPage && (
-        <Paper sx={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 1000 }} elevation={3}>
-          <BottomNavigation
-            showLabels
-            value={value}
-            onChange={handleNavigation}
-          >
-            <BottomNavigationAction label="Home" value="home" icon={<HomeIcon />} />
-            <BottomNavigationAction label="List" value="list" icon={<FormatListBulletedIcon />} />
-            <BottomNavigationAction
-              label="Edit"
-              value="edit"
-              icon={<EditIcon />}
-              sx={
-                {
-                  minWidth: 'auto',
-                  '& .MuiBottomNavigationAction-label': {
-                    fontSize: '0.75rem',
-                  },
-                }
-              }
-            />
-            <BottomNavigationAction label="Budget" value="budget" icon={<PieChartIcon />} />
-            <BottomNavigationAction label="Profile" value="profile" icon={<PersonIcon />} />
-            <BottomNavigationAction label="Invitations" value="invitations" icon={<MailIcon />} />
-          </BottomNavigation>
-        </Paper>
-      )}
+          {!isExpenseFormPage && (
+            <Paper
+              elevation={3}
+              sx={{
+                position: 'fixed',
+                bottom: '1rem',
+                // left: '1rem',
+                // right: '1rem',
+                zIndex: 1000
+              }}
+            >
+              <BottomNavigation
+                showLabels
+                value={value}
+                onChange={handleNavigation}
+              >
+                <BottomNavigationAction label="Home" value="home" icon={<HomeIcon />} />
+                <BottomNavigationAction label="List" value="list" icon={<FormatListBulletedIcon />} />
+                <BottomNavigationAction
+                  label="Edit"
+                  value="edit"
+                  icon={<EditIcon />}
+                  sx={
+                    {
+                      minWidth: 'auto',
+                      '& .MuiBottomNavigationAction-label': {
+                        fontSize: '0.75rem',
+                      },
+                    }
+                  }
+                />
+                <BottomNavigationAction label="Budget" value="budget" icon={<PieChartIcon />} />
+                <BottomNavigationAction label="Profile" value="profile" icon={<PersonIcon />} />
+                <BottomNavigationAction label="Invitations" value="invitations" icon={<MailIcon />} />
+              </BottomNavigation>
+            </Paper>
+          )}
+        </CardContent>
+      </Card>
     </Box>
   );
 };

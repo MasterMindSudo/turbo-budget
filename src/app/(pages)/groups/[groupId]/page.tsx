@@ -13,6 +13,7 @@ import { useBudget } from '@/context/BudgetProvider'; // Adjust path as needed
 import moment from 'moment';
 import AddMemberDialog from '@/components/shared/AddMemberDialog';
 import { Group, Member, Expense } from '@/context/BudgetProvider';
+import { Timestamp } from 'firebase/firestore';
 
 const GroupDetailPage = () => {
   const params = useParams();
