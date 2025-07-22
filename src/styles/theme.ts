@@ -90,7 +90,7 @@ const theme = createTheme({
     },
     MuiAutocomplete: {
       defaultProps: {
-        variant: 'standard',
+        
       },
     },
     MuiSwitch: {

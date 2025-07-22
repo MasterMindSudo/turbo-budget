@@ -5,6 +5,7 @@
 import React from 'react';
 import { AppBar, Toolbar, IconButton, Typography, Container, Box, TextField, ToggleButton, ToggleButtonGroup, Button, List } from '@mui/material';
 import { ArrowBack, AddCircle } from '@mui/icons-material';
+import { Timestamp } from 'firebase/firestore';
 import { useRouter, useParams } from 'next/navigation';
 import MemberListItem from '../../../../../../components/shared/MemberListItem';
 import CurrencyField from '../../../../../../components/shared/CurrencyField';
@@ -102,7 +103,7 @@ const NewExpenseCompactPage: React.FC = () => {
       amount: amount,
       currency: 'USD', // Default currency
       paidBy: paidBy,
-      date: new Date(), // Current date
+      date: Timestamp.fromDate(new Date()), // Current date
       participants: actualParticipants.map(p => ({ memberId: p.memberId, share: p.share })),
       // receiptUrl, category, note, isRecurring are not part of compact form
     } as const;
