@@ -169,7 +169,7 @@ export async function fetchBudgetBenchmark(
 
   const historicalMonths = monthlyHistory.filter(m => m.id !== monthId);
   const sixMonthAvg = historicalMonths.length > 0
-    ? historicalMonths.reduce((sum, m) => sum + m.total, 0) / historicalMonths.length
+    ? parseFloat((historicalMonths.reduce((sum, m) => sum + m.total, 0) / historicalMonths.length).toFixed(2))
     : 0;
 
   const categorySums: Record<string, number> = {};
@@ -183,7 +183,7 @@ export async function fetchBudgetBenchmark(
 
   const categoryAvgs: Record<string, number> = {};
   for (const catId in categorySums) {
-    categoryAvgs[catId] = categorySums[catId] / historicalMonths.length;
+    categoryAvgs[catId] = parseFloat((categorySums[catId] / historicalMonths.length).toFixed(2));
   }
 
   const result = {

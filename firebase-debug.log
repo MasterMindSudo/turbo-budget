@@ -1,0 +1,59 @@
+[debug] [2025-07-22T16:47:39.724Z] ----------------------------------------------------------------------
+[debug] [2025-07-22T16:47:39.726Z] Command:       /usr/local/Cellar/node/24.1.0/bin/node /usr/local/bin/firebase init
+[debug] [2025-07-22T16:47:39.726Z] CLI Version:   14.8.0
+[debug] [2025-07-22T16:47:39.726Z] Platform:      darwin
+[debug] [2025-07-22T16:47:39.726Z] Node Version:  v24.1.0
+[debug] [2025-07-22T16:47:39.727Z] Time:          Tue Jul 22 2025 12:47:39 GMT-0400 (Eastern Daylight Saving Time)
+[debug] [2025-07-22T16:47:39.727Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2025-07-22T16:47:39.729Z] >>> [apiv2][query] GET https://firebase-public.firebaseio.com/cli.json [none]
+[debug] [2025-07-22T16:47:39.901Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-07-22T16:47:39.902Z] > authorizing via signed-in user (kevinlcy1997@gmail.com)
+[info] 
+     ######## #### ########  ######## ########     ###     ######  ########
+     ##        ##  ##     ## ##       ##     ##  ##   ##  ##       ##
+     ######    ##  ########  ######   ########  #########  ######  ######
+     ##        ##  ##    ##  ##       ##     ## ##     ##       ## ##
+     ##       #### ##     ## ######## ########  ##     ##  ######  ########
+
+You're about to initialize a Firebase project in this directory:
+
+  /Users/kevinlam/Projects/turbo-budget
+
+Before we get started, keep in mind:
+
+  * You are initializing within an existing Firebase project directory
+
+[debug] [2025-07-22T16:47:39.997Z] <<< [apiv2][status] GET https://firebase-public.firebaseio.com/cli.json 200
+[debug] [2025-07-22T16:47:39.997Z] <<< [apiv2][body] GET https://firebase-public.firebaseio.com/cli.json {"cloudBuildErrorAfter":1594252800000,"cloudBuildWarnAfter":1590019200000,"defaultNode10After":1594252800000,"minVersion":"3.0.5","node8DeploysDisabledAfter":1613390400000,"node8RuntimeDisabledAfter":1615809600000,"node8WarnAfter":1600128000000}
+[info] 
+=== Project Setup
+[info] 
+[info] First, let's associate this project directory with a Firebase project.
+[info] You can create multiple project aliases by running firebase use --add, 
+[info] but for now we'll just set up a default project.
+[info] 
+[debug] [2025-07-22T16:48:24.997Z] Using project from CLI flag: turbo-budget-21f5a
+[debug] [2025-07-22T16:48:24.999Z] Checked if tokens are valid: false, expires at: 1751510397336
+[debug] [2025-07-22T16:48:25.000Z] Checked if tokens are valid: false, expires at: 1751510397336
+[debug] [2025-07-22T16:48:25.000Z] > refreshing access token with scopes: []
+[debug] [2025-07-22T16:48:25.002Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2025-07-22T16:48:25.002Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-07-22T16:48:25.183Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2025-07-22T16:48:25.183Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-07-22T16:48:25.203Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/turbo-budget-21f5a [none]
+[debug] [2025-07-22T16:48:25.434Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/turbo-budget-21f5a 200
+[debug] [2025-07-22T16:48:25.434Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/turbo-budget-21f5a {"projectId":"turbo-budget-21f5a","projectNumber":"242139339615","displayName":"turbo-budget","name":"projects/turbo-budget-21f5a","resources":{"hostingSite":"turbo-budget-21f5a"},"state":"ACTIVE","etag":"1_2a82d9c6-5517-4c4c-9a9e-1d24682f3bd8"}
+[info] i  Using project turbo-budget-21f5a (turbo-budget) 
+[info] 
+=== Hosting Setup
+[debug] [2025-07-22T16:48:25.448Z] Checked if tokens are valid: true, expires at: 1753206504183
+[debug] [2025-07-22T16:48:25.449Z] Checked if tokens are valid: true, expires at: 1753206504183
+[debug] [2025-07-22T16:48:25.449Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/turbo-budget-21f5a [none]
+[debug] [2025-07-22T16:48:25.609Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/turbo-budget-21f5a 200
+[debug] [2025-07-22T16:48:25.610Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/turbo-budget-21f5a {"projectId":"turbo-budget-21f5a","projectNumber":"242139339615","displayName":"turbo-budget","name":"projects/turbo-budget-21f5a","resources":{"hostingSite":"turbo-budget-21f5a"},"state":"ACTIVE","etag":"1_2a82d9c6-5517-4c4c-9a9e-1d24682f3bd8"}
+[info] 
+[info] Your public directory is the folder (relative to your project directory) that
+[info] will contain Hosting assets to be uploaded with firebase deploy. If you
+[info] have a build process for your assets, use your build's output directory.
+[info] 

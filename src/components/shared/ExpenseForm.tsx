@@ -73,11 +73,24 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ group, initialExpense, onSubm
     if (splitMode === 'Even' && typeof amount === 'number' && amount > 0) {
       const numberOfActiveParticipants = selectedParticipantIds.length;
       if (numberOfActiveParticipants > 0) {
-        const evenShare = amount / numberOfActiveParticipants;
+        const amountCents = Math.round(amount * 100);
+        const baseShareCents = Math.floor(amountCents / numberOfActiveParticipants);
+        let remainderCents = amountCents % numberOfActiveParticipants;
+
+        const newShares = new Map<string, number>();
+        selectedParticipantIds.forEach(id => {
+            let finalShareCents = baseShareCents;
+            if (remainderCents > 0) {
+                finalShareCents++;
+                remainderCents--;
+            }
+            newShares.set(id, finalShareCents / 100);
+        });
+
         setParticipants(prev =>
           prev.map(p => ({
             ...p,
-            share: selectedParticipantIds.includes(p.memberId) ? evenShare : 0,
+            share: newShares.get(p.memberId) || 0,
           }))
         );
       } else {
@@ -131,13 +144,15 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ group, initialExpense, onSubm
     let actualParticipants: { memberId: string; share: number }[] = [];
     if (divideExpense) {
         if (splitMode === 'Even') {
-            const numberOfActiveParticipants = selectedParticipantIds.length;
-            if (numberOfActiveParticipants === 0) {
+            // Use the already-calculated (and rounded) shares from the component's state.
+            actualParticipants = participants
+                .filter(p => selectedParticipantIds.includes(p.memberId))
+                .map(p => ({ memberId: p.memberId, share: p.share }));
+
+            if (actualParticipants.length === 0) {
                 alert('At least one participant must be selected for an even split.');
                 return;
             }
-            const evenShare = amount / numberOfActiveParticipants;
-            actualParticipants = selectedParticipantIds.map(id => ({ memberId: id, share: evenShare }));
         } else {
              actualParticipants = participants.filter(p => p.share > 0);
              if (splitMode === 'Amount' && actualParticipants.reduce((sum, p) => sum + p.share, 0) !== amount) {
@@ -151,10 +166,13 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ group, initialExpense, onSubm
 
     const newExpenseData: Omit<Expense, 'id' | 'currency'> & { currency?: string } = {
       title: selectedCategory?.name || 'New Expense',
-      amount: amount,
+      amount: parseFloat(amount.toFixed(2)),
       paidBy: paidBy,
       date: expenseDate ? expenseDate.toDate() : new Date(),
-      participants: actualParticipants.map(p => ({ memberId: p.memberId, share: p.share })),
+      participants: actualParticipants.map(p => ({ 
+        memberId: p.memberId, 
+        share: parseFloat(p.share.toFixed(2)) 
+      })),
       category: selectedCategory?.id,
       note: note,
       isRecurring: isRecurring,

@@ -24,16 +24,30 @@ const SettleUpPage = () => {
 
   const [selectedMonth, setSelectedMonth] = useState(moment().format('YYYY-MM'));
   const [settlements, setSettlements] = useState<any[]>([]);
+  const [transactions, setTransactions] = useState<any[]>([]);
 
   const handleMonthChange = (event: React.ChangeEvent<{ value: unknown }>) => {
     setSelectedMonth(event.target.value as string);
+    setTransactions([]); // Clear transactions when month changes
   };
 
-  const filteredExpenses = expenses.filter(expense => {
-    const expenseDate = (expense.date as Timestamp)?.toDate();
-    return moment(expenseDate).format('YYYY-MM') === selectedMonth;
-  });
-  const transactions = settleDebts(filteredExpenses, members);
+  const handleCalculateSettlement = async () => {
+    const startOfMonth = moment(selectedMonth).startOf('month').toDate();
+    const endOfMonth = moment(selectedMonth).endOf('month').toDate();
+
+    // Fetch fresh expenses for the selected month directly from Firestore
+    const expensesRef = collection(db, `groups/${groupId}/expenses`);
+    const q = query(
+      expensesRef,
+      where('date', '>=', startOfMonth),
+      where('date', '<=', endOfMonth)
+    );
+    const querySnapshot = await getDocs(q);
+    const freshExpenses = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Expense));
+
+    const calculatedTransactions = settleDebts(freshExpenses, members);
+    setTransactions(calculatedTransactions);
+  };
 
   const getMemberName = (memberId: string) => {
     const member = members.find(m => m.id === memberId);
@@ -41,6 +55,10 @@ const SettleUpPage = () => {
   };
 
   const handleProposeSettlement = async () => {
+    if (transactions.length === 0) {
+      alert("Please calculate the settlement first.");
+      return;
+    }
     const settlementDate = Timestamp.fromDate(moment(selectedMonth).startOf('month').toDate());
     const settlementsCollection = collection(db, 'settlements');
     
@@ -127,9 +145,20 @@ const SettleUpPage = () => {
         </Select>
       </FormControl>
 
-      <Button variant="contained" onClick={handleProposeSettlement} sx={{ mb: 4 }} disabled={settlements.length > 0}>
-        Propose Settlement
-      </Button>
+      <Box sx={{ display: 'flex', gap: 2, mb: 4 }}>
+        <Button variant="contained" onClick={handleCalculateSettlement} fullWidth>
+          Calculate Settlement
+        </Button>
+        <Button 
+          variant="contained" 
+          onClick={handleProposeSettlement} 
+          fullWidth
+          disabled={transactions.length === 0 || settlements.length > 0}
+          color="secondary"
+        >
+          Propose Settlement
+        </Button>
+      </Box>
 
       {settlements.length > 0 && (
         <Button variant="outlined" onClick={handleResetSettlement} sx={{ mb: 4, ml: 2 }}>
@@ -169,8 +198,21 @@ const SettleUpPage = () => {
               </ListItem>
             ))}
           </List>
+        ) : transactions.length > 0 ? (
+          <List>
+            {transactions.map((transaction: any, index: number) => (
+              <ListItem key={index}>
+                <ListItemText
+                  primary={`${getMemberName(transaction.from)} owes ${getMemberName(transaction.to)}`}
+                  secondary={`${transaction.amount.toFixed(2)}`}
+                />
+              </ListItem>
+            ))}
+          </List>
         ) : (
-          <Typography variant="body2" color="text.secondary">No settlements needed for this month.</Typography>
+          <Typography variant="body2" color="text.secondary">
+            Click "Calculate Settlement" to see who owes whom for this month.
+          </Typography>
         )}
       </Paper>
     </Container>

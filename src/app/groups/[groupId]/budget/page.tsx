@@ -38,46 +38,49 @@ const BudgetPage: React.FC = () => {
   const [availableMonths, setAvailableMonths] = useState<string[]>([]);
   const [selectedMonth, setSelectedMonth] = useState<string>('');
 
-  const fetchData = useCallback(async (groupId: string, monthOverride?: string) => {
-    setLoading(true);
-    setError(null);
-    try {
-      // First, get the list of all months that have data.
-      const available = await getAvailableMonths(groupId);
-      setAvailableMonths(available);
+  // Effect for fetching available months on initial load or when the group changes
+  useEffect(() => {
+    if (selectedGroupId) {
+      setLoading(true);
+      getAvailableMonths(selectedGroupId)
+        .then(months => {
+          setAvailableMonths(months);
+          // Set the selected month to the most recent one available, or the current month if none exist.
+          setSelectedMonth(months.length > 0 ? months[0] : dayjs().format(MONTH_ID_FORMAT));
+        })
+        .catch(err => {
+          console.error('Failed to fetch available months:', err);
+          setError('Failed to load available months.');
+        });
+    }
+  }, [selectedGroupId]);
 
-      // Determine which month to actually fetch budget data for.
-      // 1. Use the month explicitly passed in (e.g., from the dropdown).
-      // 2. If no month is passed, use the most recent month available from the database.
-      // 3. If no data exists at all, fall back to the current system month.
-      const monthToFetch = monthOverride || (available.length > 0 ? available[0] : dayjs().format(MONTH_ID_FORMAT));
-      setSelectedMonth(monthToFetch);
-
-      // Fetch the benchmark data for the determined month.
-      const monthId = dayjs(monthToFetch).format(MONTH_ID_FORMAT);
-      fetchBudgetBenchmark(groupId, monthId)
-        .then((data) => {
+  // Effect for fetching the benchmark data whenever the selected month changes
+  useEffect(() => {
+    if (selectedGroupId && selectedMonth) {
+      setLoading(true);
+      const monthId = dayjs(selectedMonth, MONTH_ID_FORMAT).format('YYYYMM');
+      fetchBudgetBenchmark(selectedGroupId, monthId)
+        .then(data => {
           setBenchmarkData(data);
         })
-
-    } catch (err) {
-      console.error('Failed to fetch budget data:', err);
-      setError('Failed to load budget data.');
-      setBenchmarkData(null);
-    } finally {
-      setLoading(false);
+        .catch(err => {
+          console.error('Failed to fetch budget data:', err);
+          setError('Failed to load budget data.');
+          setBenchmarkData(null);
+        })
+        .finally(() => {
+          setLoading(false);
+        });
     }
-  }, []); // This function is stable and doesn't need dependencies.
+  }, [selectedGroupId, selectedMonth]);
 
-  // Effect for handling initial load and group changes.
+  // Effect to update the selected group when the initialGroupId from the URL changes
   useEffect(() => {
     if (initialGroupId) {
       setSelectedGroupId(initialGroupId);
-      // On initial load, call fetchData without a specific month.
-      // It will automatically use the latest available month.
-      fetchData(initialGroupId);
     }
-  }, [initialGroupId, fetchData]);
+  }, [initialGroupId]);
 
   const handleGroupChange = (event: any) => {
     const newGroupId = event.target.value as string;
@@ -85,9 +88,8 @@ const BudgetPage: React.FC = () => {
   };
 
   const handleMonthChange = (event: any) => {
-    const newMonth = event.target.value as string;
-    // When the user manually changes the month, fetch data for that specific month.
-    fetchData(selectedGroupId, newMonth);
+    // Simply update the state. The useEffect hook will handle fetching the data.
+    setSelectedMonth(event.target.value as string);
   };
 
   const currentGroup = groups.find((group) => group.id === selectedGroupId);
