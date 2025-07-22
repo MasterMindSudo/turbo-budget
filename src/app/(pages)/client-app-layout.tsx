@@ -114,7 +114,7 @@ const ClientAppLayout: FC<ClientAppLayoutProps> = ({ children }) => {
 
   const isExpenseFormPage = pathname?.includes('/expense/new') || pathname?.includes('/expense/edit');
 
-  const marginSize = '0.5rem';
+  const marginSize = '0.75rem';
 
   return (
     <Box
@@ -150,7 +150,6 @@ const ClientAppLayout: FC<ClientAppLayoutProps> = ({ children }) => {
         sx={{
           margin: `-2rem ${marginSize} ${marginSize}`,
           zIndex: 1,
-          // margin: `-1rem ${marginSize} ${marginSize}`,
           maxWidth: isDesktop ? theme.breakpoints.values.md : `calc(100% - ${marginSize} * 2)`,
           width: '100%',
           flexGrow: 1,
@@ -181,33 +180,31 @@ const ClientAppLayout: FC<ClientAppLayoutProps> = ({ children }) => {
                 width: '100%',
                 border: '1px solid #e0e0e0',
                 borderRadius: '8px',
-                overflow: 'hidden',
-
+                overflow: 'auto',
               }}
             >
               <BottomNavigation
-                showLabels
+                showLabels={isDesktop}
                 value={value}
                 onChange={handleNavigation}
+                sx={{
+                  width: '100%',
+
+                  '.MuiBottomNavigationAction-root': {
+                    minWidth: '16px',
+                  }
+                }}
               >
-                <BottomNavigationAction label={isDesktop ? "Home" : ""} value="home" icon={<HomeIcon />} />
-                <BottomNavigationAction label={isDesktop ? "List" : ""} value="list" icon={<FormatListBulletedIcon />} />
+                <BottomNavigationAction label="Home" value="home" icon={<HomeIcon />} />
+                <BottomNavigationAction label="List" value="list" icon={<FormatListBulletedIcon />} />
                 <BottomNavigationAction
-                  label={isDesktop ? "Edit" : ""}
+                  label="Edit"
                   value="edit"
                   icon={<EditIcon />}
-                  sx={
-                    {
-                      minWidth: 'auto',
-                      '& .MuiBottomNavigationAction-label': {
-                        fontSize: '0.75rem',
-                      },
-                    }
-                  }
                 />
-                <BottomNavigationAction label={isDesktop ? "Budget" : ""} value="budget" icon={<PieChartIcon />} />
-                <BottomNavigationAction label={isDesktop ? "Profile" : ""} value="profile" icon={<PersonIcon />} />
-                <BottomNavigationAction label={isDesktop ? "Invitations" : ""} value="invitations" icon={<MailIcon />} />
+                <BottomNavigationAction label="Budget" value="budget" icon={<PieChartIcon />} />
+                <BottomNavigationAction label="Profile" value="profile" icon={<PersonIcon />} />
+                <BottomNavigationAction label="Invitations" value="invitations" icon={<MailIcon />} />
               </BottomNavigation>
             </Box>
           )}
