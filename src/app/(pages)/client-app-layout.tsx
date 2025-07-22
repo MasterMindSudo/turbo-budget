@@ -2,7 +2,7 @@
 
 'use client'; // This is a client component
 
-import React from 'react';
+import { FC, ReactNode, SyntheticEvent, useEffect, useState } from 'react';
 import {
   AppBar,
   Toolbar,
@@ -13,7 +13,12 @@ import {
   Card,
   CardContent,
   useTheme,
-  useMediaQuery
+  useMediaQuery,
+  CardActionArea,
+  CardActions,
+  CardHeader,
+  Tab,
+  Tabs
 } from '@mui/material';
 import { usePathname, useRouter } from 'next/navigation';
 import HomeIcon from '@mui/icons-material/Home';
@@ -25,10 +30,10 @@ import MailIcon from '@mui/icons-material/Mail';
 import { useBudget } from '../../context/BudgetProvider';
 
 interface ClientAppLayoutProps {
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
-const ClientAppLayout: React.FC<ClientAppLayoutProps> = ({ children }) => {
+const ClientAppLayout: FC<ClientAppLayoutProps> = ({ children }) => {
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
 
@@ -48,13 +53,14 @@ const ClientAppLayout: React.FC<ClientAppLayoutProps> = ({ children }) => {
     return 'home';
   };
 
-  const [value, setValue] = React.useState(getActiveTab(pathname || ''));
+  const [value, setValue] = useState(getActiveTab(pathname || ''));
+  const [tab, setTab] = useState(1);
 
-  React.useEffect(() => {
+  useEffect(() => {
     setValue(getActiveTab(pathname || ''));
   }, [pathname]);
 
-  const handleNavigation = (event: React.SyntheticEvent, newValue: string) => {
+  const handleNavigation = (event: SyntheticEvent, newValue: string) => {
     setValue(newValue);
     if (!activeGroup && !['home', 'profile', 'invitations'].includes(newValue)) {
       router.push('/dashboard');
@@ -88,6 +94,8 @@ const ClientAppLayout: React.FC<ClientAppLayoutProps> = ({ children }) => {
 
   const isExpenseFormPage = pathname?.includes('/expense/new') || pathname?.includes('/expense/edit');
 
+  const marginSize = '1rem';
+
   return (
     <Box
       sx={{
@@ -97,15 +105,44 @@ const ClientAppLayout: React.FC<ClientAppLayoutProps> = ({ children }) => {
         height: '100svh',
       }}
     >
-      <Card
-        sx={{
-          margin: '1rem',
-          maxWidth: isDesktop ? theme.breakpoints.values.md : 'calc(100% - 2rem)',
+      <Card 
+        sx={{ 
           width: '100%',
-          flexGrow: 1,
+          margin: `${marginSize} ${marginSize} 0`,
+          maxWidth: isDesktop ? theme.breakpoints.values.md : `calc(100% - ${marginSize} * 2)`,
+          ':after': {
+            content: '""',
+            display: 'inline-block',
+            paddingBottom: '2rem',
+          }
         }}
       >
-        <CardContent>
+        <Tabs
+          variant="fullWidth"
+          centered
+          value={tab}
+          onChange={(event, newValue) => setTab(newValue)}
+        >
+            <Tab label="Personal" value={1}/>
+            <Tab label="Group" value={2}/>
+          </Tabs>
+      </Card>
+      <Card
+        sx={{
+          margin: `-2rem ${marginSize} ${marginSize}`,
+          maxWidth: isDesktop ? theme.breakpoints.values.md : `calc(100% - ${marginSize} * 2)`,
+          width: '100%',
+          flexGrow: 1,
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
+        <CardContent
+          sx={{
+            flexGrow: 1,
+            maxHeight: 'calc(100svh - 64px - 56px)', // Adjust for AppBar and BottomNavigation height
+            overflowY: 'auto',
+          }}>
           <AppBar position="static" color="inherit" elevation={1} sx={{ backgroundColor: 'white', display: 'none' }}>
             <Toolbar sx={{ justifyContent: 'center' }}>
             </Toolbar>
@@ -114,16 +151,17 @@ const ClientAppLayout: React.FC<ClientAppLayoutProps> = ({ children }) => {
           <Box component="main" sx={{ flexGrow: 1, pb: isExpenseFormPage ? 0 : '56px' }}>
             {children}
           </Box>
-
+        </CardContent>
+        <CardActions sx={{ padding: marginSize }} >
           {!isExpenseFormPage && (
-            <Paper
-              elevation={3}
+            <Box
               sx={{
-                position: 'fixed',
-                bottom: '1rem',
-                // left: '1rem',
-                // right: '1rem',
-                zIndex: 1000
+                bottom: `calc(${marginSize} * 2)`,
+                width: '100%',
+                border: '1px solid #e0e0e0',
+                borderRadius: '8px',
+                overflow: 'hidden',
+
               }}
             >
               <BottomNavigation
@@ -131,10 +169,10 @@ const ClientAppLayout: React.FC<ClientAppLayoutProps> = ({ children }) => {
                 value={value}
                 onChange={handleNavigation}
               >
-                <BottomNavigationAction label="Home" value="home" icon={<HomeIcon />} />
-                <BottomNavigationAction label="List" value="list" icon={<FormatListBulletedIcon />} />
+                <BottomNavigationAction label={isDesktop ? "Home" : ""} value="home" icon={<HomeIcon />} />
+                <BottomNavigationAction label={isDesktop ? "List" : ""} value="list" icon={<FormatListBulletedIcon />} />
                 <BottomNavigationAction
-                  label="Edit"
+                  label={isDesktop ? "Edit" : ""}
                   value="edit"
                   icon={<EditIcon />}
                   sx={
@@ -146,13 +184,13 @@ const ClientAppLayout: React.FC<ClientAppLayoutProps> = ({ children }) => {
                     }
                   }
                 />
-                <BottomNavigationAction label="Budget" value="budget" icon={<PieChartIcon />} />
-                <BottomNavigationAction label="Profile" value="profile" icon={<PersonIcon />} />
-                <BottomNavigationAction label="Invitations" value="invitations" icon={<MailIcon />} />
+                <BottomNavigationAction label={isDesktop ? "Budget" : ""} value="budget" icon={<PieChartIcon />} />
+                <BottomNavigationAction label={isDesktop ? "Profile" : ""} value="profile" icon={<PersonIcon />} />
+                <BottomNavigationAction label={isDesktop ? "Invitations" : ""} value="invitations" icon={<MailIcon />} />
               </BottomNavigation>
-            </Paper>
+            </Box>
           )}
-        </CardContent>
+        </CardActions>
       </Card>
     </Box>
   );
