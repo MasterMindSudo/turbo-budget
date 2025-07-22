@@ -7,7 +7,7 @@ import { useBudget } from '@/context/BudgetProvider';
 import { fetchBudgetBenchmark, BenchmarkData, getAvailableMonths } from '@/lib/budget';
 import BudgetSummaryCard from '@/components/BudgetSummaryCard';
 import CategoryList from '@/components/CategoryList';
-import BudgetChart from '@/components/BudgetChart';
+// import BudgetChart from '@/components/BudgetChart';
 import {
   Typography,
   Container,
@@ -189,12 +189,12 @@ const BudgetPage: React.FC = () => {
             thisMonth={benchmarkData.thisMonth}
             sixMonthAvg={benchmarkData.sixMonthAvg}
           />
-          <Box sx={{ my: 4 }}>
+          {/* <Box sx={{ my: 4 }}>
             <BudgetChart
               thisMonthHistory={benchmarkData.monthlyHistory}
               sixMonthAvg={benchmarkData.sixMonthAvg}
             />
-          </Box>
+          </Box> */}
           <CategoryList
             thisMonth={benchmarkData.thisMonth}
             categoryAvgs={benchmarkData.categoryAvgs}
