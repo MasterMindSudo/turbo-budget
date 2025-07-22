@@ -15,6 +15,7 @@ import { categories } from '../../lib/data';
 import { Group, Expense } from '../../context/BudgetProvider';
 
 import { useAuth } from '../../context/AuthContext';
+import { Timestamp } from 'firebase/firestore';
 
 interface ExpenseFormProps {
   group: Group;
@@ -121,14 +122,15 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ group, initialExpense, onSubm
     );
   };
 
-  const handleParticipantShareChange = (memberId: string, value: number | string) => {
+  const handleParticipantShareChange = (memberId: string, value: string | number) => {
+    const numericValue = typeof value === 'string' ? parseFloat(value) : value;
     setParticipants(prev =>
-      prev.map(p => (p.memberId === memberId ? { ...p, share: typeof value === 'number' ? value : 0 } : p))
+      prev.map(p => (p.memberId === memberId ? { ...p, share: isNaN(numericValue) ? 0 : numericValue } : p))
     );
   };
 
-  const handlePaidByChange = (memberId: string, value: string) => {
-    setPaidBy(value);
+  const handlePaidByChange = (memberId: string, value: string | number) => {
+    setPaidBy(memberId);
   };
 
   const handleSubmit = () => {
@@ -165,9 +167,12 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ group, initialExpense, onSubm
     const receiptUrl = receiptImage ? `gs://your-firebase-bucket/receipts/${receiptImage.name}` : initialExpense?.receiptUrl;
 
     const newExpenseData: Omit<Expense, 'id' | 'currency'> & { currency?: string } = {
+      groupId: group.id,
       title: selectedCategory?.name || 'New Expense',
       amount: parseFloat(amount.toFixed(2)),
       paidBy: paidBy,
+      date: Timestamp.fromDate(expenseDate ? expenseDate.toDate() : new Date()),
+      participants: actualParticipants.map(p => ({ memberId: p.memberId, share: p.share })),
       date: expenseDate ? expenseDate.toDate() : new Date(),
       participants: actualParticipants.map(p => ({ 
         memberId: p.memberId, 

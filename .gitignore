@@ -17,6 +17,12 @@
 /.next/
 /out/
 
+# firebase
+/.firebase
+
+# gemini memory
+/GEMINI*
+
 # production
 /build
 
