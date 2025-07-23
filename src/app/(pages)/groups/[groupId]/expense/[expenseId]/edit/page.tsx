@@ -24,7 +24,7 @@ const EditExpensePage: React.FC = () => {
       console.error('Group or Expense ID is missing.');
       return;
     }
-    updateExpense({ ...expenseData, id: expenseId, groupId, currency: 'USD' });
+    updateExpense({ ...expenseData, id: expenseId, groupId });
     router.back();
   };
 

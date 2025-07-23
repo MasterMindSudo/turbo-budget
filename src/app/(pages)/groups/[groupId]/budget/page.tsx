@@ -1,183 +1,173 @@
-// /Users/kevinlam/Projects/turbo-budget/src/app/groups/[groupId]/budget/page.tsx
+// src/app/groups/[groupId]/budget/page.tsx
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { useParams } from 'next/navigation';
 import { useBudget } from '@/context/BudgetProvider';
-import { fetchBudgetBenchmark, BenchmarkData, getAvailableMonths } from '@/lib/budget';
-import BudgetSummaryCard from '@/components/BudgetSummaryCard';
-import CategoryList from '@/components/CategoryList';
-// import BudgetChart from '@/components/BudgetChart';
-import {
-  Typography,
-  Container,
-  Box,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  CircularProgress,
-  Grid,
-} from '@mui/material';
+import { Container, Typography, Box, Paper, Grid, CircularProgress, Alert, FormControl, InputLabel, Select, MenuItem, TextField, useTheme } from '@mui/material';
+import { BarChart } from '@mui/x-charts/BarChart';
+import { Gauge, gaugeClasses } from '@mui/x-charts/Gauge';
 import dayjs from 'dayjs';
 import { MONTH_ID_FORMAT } from '@/constants';
+import { categories as categoryData } from '@/lib/data';
+import { debounce } from 'lodash';
 
-const BudgetPage: React.FC = () => {
+const BudgetPage = () => {
   const params = useParams();
-  const router = useRouter();
-  const initialGroupId = (params?.groupId as string) || '';
+  const groupId = params?.groupId as string;
+  const { getGroupById, getExpensesByGroupId, updateGroupBudget } = useBudget();
+  const theme = useTheme();
 
-  const { state } = useBudget();
-  const { groups, loading: loadingGroups } = state;
+  const group = getGroupById(groupId);
+  const expenses = getExpensesByGroupId(groupId);
 
-  const [selectedGroupId, setSelectedGroupId] = useState<string>(initialGroupId);
-  const [benchmarkData, setBenchmarkData] = useState<BenchmarkData | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-  const [availableMonths, setAvailableMonths] = useState<string[]>([]);
   const [selectedMonth, setSelectedMonth] = useState<string>('');
+  const [budgetGoal, setBudgetGoal] = useState<string | number>('');
 
-  // Effect for fetching available months on initial load or when the group changes
+  // Debounced function to update Firestore
+  const debouncedUpdateBudget = useCallback(
+    debounce((newBudget: number) => {
+      if (groupId && selectedMonth) {
+        updateGroupBudget(groupId, selectedMonth, newBudget);
+      }
+    }, 1000), // 1-second debounce delay
+    [groupId, selectedMonth, updateGroupBudget]
+  );
+
   useEffect(() => {
-    if (selectedGroupId) {
-      setLoading(true);
-      getAvailableMonths(selectedGroupId)
-        .then(months => {
-          setAvailableMonths(months);
-          // Set the selected month to the most recent one available, or the current month if none exist.
-          setSelectedMonth(months.length > 0 ? months[0] : dayjs().format(MONTH_ID_FORMAT));
-        })
-        .catch(err => {
-          console.error('Failed to fetch available months:', err);
-          setError('Failed to load available months.');
-        });
+    if (group && selectedMonth) {
+      const monthlyBudget = group.budget?.[selectedMonth] ?? '';
+      setBudgetGoal(monthlyBudget);
+    } else {
+      setBudgetGoal('');
     }
-  }, [selectedGroupId]);
-
-  // Effect for fetching the benchmark data whenever the selected month changes
-  useEffect(() => {
-    if (selectedGroupId && selectedMonth) {
-      setLoading(true);
-      const monthId = dayjs(selectedMonth, MONTH_ID_FORMAT).format('YYYYMM');
-      fetchBudgetBenchmark(selectedGroupId, monthId)
-        .then(data => {
-          setBenchmarkData(data);
-        })
-        .catch(err => {
-          console.error('Failed to fetch budget data:', err);
-          setError('Failed to load budget data.');
-          setBenchmarkData(null);
-        })
-        .finally(() => {
-          setLoading(false);
-        });
-    }
-  }, [selectedGroupId, selectedMonth]);
-
-  // Effect to update the selected group when the initialGroupId from the URL changes
-  useEffect(() => {
-    if (initialGroupId) {
-      setSelectedGroupId(initialGroupId);
-    }
-  }, [initialGroupId]);
-
-  const handleGroupChange = (event: any) => {
-    const newGroupId = event.target.value as string;
-    router.push(`/groups/${newGroupId}/budget`);
-  };
+  }, [group, selectedMonth]);
 
   const handleMonthChange = (event: any) => {
-    // Simply update the state. The useEffect hook will handle fetching the data.
     setSelectedMonth(event.target.value as string);
   };
 
-  const currentGroup = groups.find((group) => group.id === selectedGroupId);
+  const handleGoalChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const rawValue = event.target.value;
+    const numericValue = rawValue === '' ? '' : Number(rawValue);
+    setBudgetGoal(numericValue);
+    if (numericValue !== '') {
+      debouncedUpdateBudget(numericValue);
+    }
+  };
 
-  if (loadingGroups || loading) {
+  const { availableMonths, chartData, gaugeValue, stackedBarData } = useMemo(() => {
+    if (!group) {
+      return { 
+        availableMonths: [], 
+        chartData: [], 
+        gaugeValue: 0, 
+        stackedBarData: { dataset: [], series: [], xAxis: [] } 
+      };
+    }
+
+    // --- Data for Month Selector and Single Month Charts ---
+    const months = [...new Set(group.expenses.map(e => dayjs(e.date.toDate()).format(MONTH_ID_FORMAT)))].sort((a, b) => b.localeCompare(a));
+    const filteredExpenses = selectedMonth 
+      ? expenses.filter(e => dayjs(e.date.toDate()).format(MONTH_ID_FORMAT) === selectedMonth)
+      : expenses; // If no month selected, use all expenses for some charts
+
+    const categoryTotals = filteredExpenses.reduce((acc, expense) => {
+      const categoryId = expense.category || 'Uncategorized';
+      const categoryName = categoryData.find(c => c.id === categoryId)?.name || categoryId;
+      const amount = expense.amountInBaseCurrency || expense.amount;
+      acc[categoryName] = (acc[categoryName] || 0) + amount;
+      return acc;
+    }, {} as Record<string, number>);
+
+    const newChartData = Object.entries(categoryTotals).map(([category, total]) => ({ category, total }));
+    const totalSpendInMonth = filteredExpenses.reduce((sum, e) => sum + (e.amountInBaseCurrency || e.amount), 0);
+    const numericGoal = budgetGoal === '' ? 0 : Number(budgetGoal);
+    const newGaugeValue =
+      numericGoal === 0 ? 0 : Math.round((totalSpendInMonth / numericGoal) * 100);
+
+    // --- Data for Stacked Bar Chart ---
+    const monthlyCategoryTotals: Record<string, Record<string, number>> = {};
+    const allCategories = new Set<string>();
+
+    group.expenses.forEach(expense => {
+        const month = dayjs(expense.date.toDate()).format(MONTH_ID_FORMAT);
+        const categoryId = expense.category || 'Uncategorized';
+        const categoryName = categoryData.find(c => c.id === categoryId)?.name || categoryId;
+        const amount = expense.amountInBaseCurrency || expense.amount;
+        allCategories.add(categoryName);
+
+        if (!monthlyCategoryTotals[month]) {
+            monthlyCategoryTotals[month] = {};
+        }
+        monthlyCategoryTotals[month][categoryName] = (monthlyCategoryTotals[month][categoryName] || 0) + amount;
+    });
+
+    const stackedChartDataset = Object.keys(monthlyCategoryTotals).map(month => ({
+        month,
+        ...monthlyCategoryTotals[month]
+    })).sort((a, b) => a.month.localeCompare(b.month));
+
+    const stackedBarSeries = Array.from(allCategories).map(category => ({
+        dataKey: category,
+        label: category,
+        stack: 'total',
+    }));
+
+    const stackedBarXAxis = [{
+        data: stackedChartDataset.map(d => dayjs(d.month, MONTH_ID_FORMAT).format('MMM YY')),
+        scaleType: 'band' as const,
+    }];
+
+    const finalStackedBarData = {
+        dataset: stackedChartDataset,
+        series: stackedBarSeries,
+        xAxis: stackedBarXAxis,
+    };
+
+    return { 
+        availableMonths: months, 
+        chartData: newChartData, 
+        gaugeValue: newGaugeValue,
+        stackedBarData: finalStackedBarData,
+    };
+  }, [group, expenses, selectedMonth, budgetGoal]);
+
+  if (!group) {
     return (
       <Container sx={{ py: 4, textAlign: 'center' }}>
-        <CircularProgress />
-        <Typography>
-          {loadingGroups ? 'Loading groups...' : 'Loading budget data...'}
+        <Typography variant='h6' color='text.secondary'>
+          Loading group data...
         </Typography>
-      </Container>
-    );
-  }
-
-  if (error) {
-    return (
-      <Container sx={{ py: 4 }}>
-        <Typography variant="h6" color="error" gutterBottom>
-          Error
-        </Typography>
-        <Typography>{error}</Typography>
-      </Container>
-    );
-  }
-
-  if (!groups || groups.length === 0) {
-    return (
-      <Container sx={{ py: 4 }}>
-        <Typography variant="h6" color="text.secondary" align="center">
-          No groups available. Please create a group first.
-        </Typography>
-      </Container>
-    );
-  }
-
-  if (!currentGroup) {
-    return (
-      <Container sx={{ py: 4 }}>
-        <Typography variant="h6" color="text.secondary" align="center">
-          Selected group not found.
-        </Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}><CircularProgress /></Box>
       </Container>
     );
   }
 
   return (
-    <Container
-      maxWidth="lg"
-      sx={{
-        py: 4,
-      }}
-    >
-      <Typography variant="h4" component="h1" gutterBottom sx={{ mb: 4 }}>
-        Budget Analysis
+    <Container maxWidth="lg" sx={{ mt: 4 }}>
+      <Typography variant="h4" component="h1" gutterBottom>
+        Budget for {group.name}
       </Typography>
 
+      {/* Selectors */}
       <Grid container spacing={2} sx={{ mb: 4 }}>
-        <Grid item xs={12} sm={6}>
-          <FormControl fullWidth>
-            <InputLabel id="group-select-label">Select Group</InputLabel>
-            <Select
-              labelId="group-select-label"
-              id="group-select"
-              value={selectedGroupId}
-              label="Select Group"
-              onChange={handleGroupChange}
-            >
-              {groups.map((group) => (
-                <MenuItem key={group.id} value={group.id}>
-                  {group.name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </Grid>
         <Grid item xs={12} sm={6}>
           <FormControl fullWidth>
             <InputLabel id="month-select-label">Select Month</InputLabel>
             <Select
               labelId="month-select-label"
-              id="month-select"
               value={selectedMonth}
               label="Select Month"
               onChange={handleMonthChange}
+              disabled={availableMonths.length === 0}
             >
+              <MenuItem value="">
+                <em>All Time</em>
+              </MenuItem>
               {availableMonths.map((month) => (
                 <MenuItem key={month} value={month}>
-                  {dayjs(month, MONTH_ID_FORMAT).format('MMM YYYY')}
+                  {dayjs(month, MONTH_ID_FORMAT).format('MMMM YYYY')}
                 </MenuItem>
               ))}
             </Select>
@@ -185,36 +175,95 @@ const BudgetPage: React.FC = () => {
         </Grid>
       </Grid>
 
-      {benchmarkData && benchmarkData.thisMonth ? (
-        <>
-          <BudgetSummaryCard
-            thisMonth={benchmarkData.thisMonth}
-            sixMonthAvg={benchmarkData.sixMonthAvg}
-          />
-          {/* <Box sx={{ my: 4 }}>
-            <BudgetChart
-              thisMonthHistory={benchmarkData.monthlyHistory}
-              sixMonthAvg={benchmarkData.sixMonthAvg}
+      {/* Charts */}
+      <Grid container spacing={4}>
+        <Grid item xs={12} md={6}>
+          <Paper elevation={3} sx={{ p: 3, borderRadius: 3 }}>
+            <Typography variant="h6" gutterBottom>
+              Spending by Category {selectedMonth ? `for ${dayjs(selectedMonth, MONTH_ID_FORMAT).format('MMMM YYYY')}` : '(All Time)'}
+            </Typography>
+            <Box sx={{ height: 300 }}>
+              {chartData.length > 0 ? (
+                <BarChart
+                  dataset={chartData}
+                  yAxis={[{ scaleType: 'band', dataKey: 'category' }]}
+                  series={[{ dataKey: 'total', label: `Total Spend (${group.baseCurrency})`, valueFormatter: (value) => value?.toFixed(2) }]}
+                  layout="horizontal"
+                  height={300}
+                  margin={{ top: 10, bottom: 30, left: 120, right: 20 }}
+                />
+              ) : (
+                <Typography sx={{ textAlign: 'center', pt: 8 }}>No expenses for this period.</Typography>
+              )}
+            </Box>
+          </Paper>
+        </Grid>
+
+        <Grid item xs={12} md={6}>
+          <Paper elevation={3} sx={{ p: 3, borderRadius: 3, textAlign: 'center' }}>
+            <Typography variant="h6" gutterBottom>
+              Budget Goal Progress {selectedMonth ? `for ${dayjs(selectedMonth, MONTH_ID_FORMAT).format('MMMM YYYY')}` : ''}
+            </Typography>
+            <TextField
+              label={`Budget Goal (${group.baseCurrency})`}
+              type="number"
+              variant="outlined"
+              value={budgetGoal}
+              onChange={handleGoalChange}
+              sx={{ mt: 2, mb: 2, width: '50%' }}
+              disabled={!selectedMonth}
             />
-          </Box> */}
-          <CategoryList
-            thisMonth={benchmarkData.thisMonth}
-            categoryAvgs={benchmarkData.categoryAvgs}
-          />
-          <Typography
-            variant="caption"
-            display="block"
-            textAlign="center"
-            sx={{ mt: 4, color: 'text.secondary' }}
-          >
-            Targets are based on a 6-month rolling average of spending.
-          </Typography>
-        </>
-      ) : (
-        <Typography variant="body1" color="text.secondary" align="center">
-          No budget data available for this group for the selected month.
-        </Typography>
-      )}
+            <Box sx={{ height: 240, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+              {selectedMonth ? (
+                <Gauge
+                  value={gaugeValue}
+                  valueMax={100}
+                  startAngle={-110}
+                  endAngle={110}
+                  height={200}
+                  sx={{
+                    [`& .${gaugeClasses.valueText}`]: {
+                      fontSize: 40,
+                      transform: 'translate(0px, 0px)',
+                    },
+                    [`& .${gaugeClasses.valueArc}`]: {
+                      fill: gaugeValue > 100 ? theme.palette.error.main : theme.palette.success.main,
+                    },
+                    [`& .${gaugeClasses.referenceArc}`]: {
+                      fill: theme.palette.grey[200],
+                    },
+                  }}
+                  text={`${gaugeValue}%`}
+                />
+              ) : (
+                <Typography sx={{ textAlign: 'center', pt: 4, color: 'text.secondary' }}>Select a month to set a budget goal.</Typography>
+              )}
+            </Box>
+          </Paper>
+        </Grid>
+        
+        <Grid item xs={12}>
+            <Paper elevation={3} sx={{ p: 3, borderRadius: 3 }}>
+                <Typography variant="h6" gutterBottom>
+                Monthly Spending History by Category
+                </Typography>
+                <Box sx={{ height: 400 }}>
+                {stackedBarData.dataset.length > 0 ? (
+                    <BarChart
+                        dataset={stackedBarData.dataset}
+                        xAxis={stackedBarData.xAxis}
+                        series={stackedBarData.series}
+                        height={400}
+                        margin={{ top: 10, bottom: 30, left: 80, right: 10 }}
+                        yAxis={[{ label: `Total Spend (${group.baseCurrency})` }]}
+                    />
+                ) : (
+                    <Typography sx={{ textAlign: 'center', pt: 8 }}>No expense history to display.</Typography>
+                )}
+                </Box>
+            </Paper>
+        </Grid>
+      </Grid>
     </Container>
   );
 };

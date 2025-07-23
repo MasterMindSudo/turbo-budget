@@ -4,18 +4,21 @@
 import React, { useState, useMemo } from 'react';
 import { BarChart } from '@mui/x-charts/BarChart';
 import { Gauge, gaugeClasses } from '@mui/x-charts/Gauge';
-import { Container, Typography, Box, Paper, Grid, FormControl, InputLabel, Select, MenuItem, TextField } from '@mui/material';
+import { Container, Typography, Box, Paper, Grid, FormControl, InputLabel, Select, MenuItem, TextField, useTheme } from '@mui/material';
 import { useBudget } from '@/context/BudgetProvider';
 import dayjs from 'dayjs';
 import { MONTH_ID_FORMAT } from '@/constants';
 
+import { categories as categoryData } from '@/lib/data';
+
 const ChartTestingPage: React.FC = () => {
   const { state } = useBudget();
   const { groups } = state;
+  const theme = useTheme();
 
   const [selectedGroupId, setSelectedGroupId] = useState<string>('');
   const [selectedMonth, setSelectedMonth] = useState<string>('');
-  const [budgetGoal, setBudgetGoal] = useState<number>(2000); // Default budget goal
+  const [budgetGoal, setBudgetGoal] = useState<string | number>('');
 
   const handleGroupChange = (event: any) => {
     setSelectedGroupId(event.target.value as string);
@@ -27,8 +30,8 @@ const ChartTestingPage: React.FC = () => {
   };
 
   const handleGoalChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const newGoal = Number(event.target.value);
-    setBudgetGoal(newGoal > 0 ? newGoal : 1); // Prevent goal from being zero or negative
+    const raw = event.target.value;
+    setBudgetGoal(raw === '' ? '' : Number(raw));
   };
 
   const { availableMonths, chartData, gaugeValue, stackedBarData } = useMemo(() => {
@@ -55,13 +58,16 @@ const ChartTestingPage: React.FC = () => {
     const months = [...new Set(group.expenses.map(e => dayjs(e.date.toDate()).format(MONTH_ID_FORMAT)))].sort((a, b) => b.localeCompare(a));
     const filteredExpenses = group.expenses.filter(e => dayjs(e.date.toDate()).format(MONTH_ID_FORMAT) === selectedMonth);
     const categoryTotals = filteredExpenses.reduce((acc, expense) => {
-      const category = expense.category || 'Uncategorized';
-      acc[category] = (acc[category] || 0) + expense.amount;
+      const categoryId = expense.category || 'Uncategorized';
+      const categoryName = categoryData.find(c => c.id === categoryId)?.name || categoryId;
+      acc[categoryName] = (acc[categoryName] || 0) + expense.amount;
       return acc;
     }, {} as Record<string, number>);
     const newChartData = Object.entries(categoryTotals).map(([category, total]) => ({ category, total }));
     const totalSpend = filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
-    const newGaugeValue = totalSpend > 0 ? Math.min(Math.round((totalSpend / budgetGoal) * 100), 100) : 0;
+    const numericGoal = budgetGoal === '' ? 0 : Number(budgetGoal);
+    const newGaugeValue =
+      numericGoal === 0 ? 0 : Math.round((totalSpend / numericGoal) * 100);
 
     // --- Data for Stacked Bar Chart ---
     const monthlyCategoryTotals: Record<string, Record<string, number>> = {};
@@ -69,13 +75,14 @@ const ChartTestingPage: React.FC = () => {
 
     group.expenses.forEach(expense => {
         const month = dayjs(expense.date.toDate()).format(MONTH_ID_FORMAT);
-        const category = expense.category || 'Uncategorized';
-        allCategories.add(category);
+        const categoryId = expense.category || 'Uncategorized';
+        const categoryName = categoryData.find(c => c.id === categoryId)?.name || categoryId;
+        allCategories.add(categoryName);
 
         if (!monthlyCategoryTotals[month]) {
             monthlyCategoryTotals[month] = {};
         }
-        monthlyCategoryTotals[month][category] = (monthlyCategoryTotals[month][category] || 0) + expense.amount;
+        monthlyCategoryTotals[month][categoryName] = (monthlyCategoryTotals[month][categoryName] || 0) + expense.amount;
     });
 
     const stackedChartDataset = Object.keys(monthlyCategoryTotals).map(month => ({
@@ -194,6 +201,7 @@ const ChartTestingPage: React.FC = () => {
             <Box sx={{ height: 240, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
               <Gauge
                 value={gaugeValue}
+                valueMax={100}
                 startAngle={-110}
                 endAngle={110}
                 height={200}
@@ -203,7 +211,7 @@ const ChartTestingPage: React.FC = () => {
                     transform: 'translate(0px, 0px)',
                   },
                   [`& .${gaugeClasses.valueArc}`]: {
-                    fill: '#52b202',
+                    fill: gaugeValue > 100 ? theme.palette.error.main : theme.palette.success.main,
                   },
                   [`& .${gaugeClasses.referenceArc}`]: {
                     fill: '#f4f4f4',

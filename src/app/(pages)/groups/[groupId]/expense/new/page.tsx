@@ -21,7 +21,7 @@ const NewExpensePage: React.FC = () => {
       console.error('Group ID is missing.');
       return;
     }
-    addExpense({ ...expenseData, currency: 'USD' }, groupId);
+    addExpense(expenseData, groupId);
     router.back();
   };
 

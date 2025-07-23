@@ -1,0 +1,22 @@
+# .github/workflows/firebase-hosting-dev-push.yml
+name: Deploy to Firebase Hosting on Dev Push
+'on':
+  push:
+    branches:
+      - dev
+permissions:
+  checks: write
+  contents: read
+jobs:
+  build_and_deploy:
+    if: '${{ github.repository_owner == ''kevinlam'' }}'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm ci && npm run build
+      - uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: '${{ secrets.GITHUB_TOKEN }}'
+          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_TURBO_BUDGET_21F5A }}'
+          projectId: turbo-budget-21f5a
+          channelId: dev

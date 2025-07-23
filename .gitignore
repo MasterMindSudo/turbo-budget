@@ -16,12 +16,12 @@
 # next.js
 /.next/
 /out/
-
 # firebase
 /.firebase
 
 # gemini memory
 /GEMINI*
+
 
 # production
 /build
@@ -50,3 +50,4 @@ next-env.d.ts
 # service account key
 turbo-budget-21f5a-firebase-adminsdk-fbsvc-2d2aa428e7.json
 turbo*.json
+serviceAccountKey.json

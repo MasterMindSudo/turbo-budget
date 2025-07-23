@@ -4,11 +4,12 @@
 import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { useParams, useRouter } from 'next/navigation'; // Added useRouter
-import { Container, Typography, Box, Grid, Paper, List, ListItem, ListItemText, Avatar, Chip, Button, IconButton } from '@mui/material';
+import { Container, Typography, Box, Grid, Paper, List, ListItem, ListItemText, Avatar, Chip, Button, IconButton, FormControl, Select, MenuItem } from '@mui/material';
 import GroupIcon from '@mui/icons-material/Group';
 import PersonIcon from '@mui/icons-material/Person';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
 import { useBudget } from '@/context/BudgetProvider'; // Adjust path as needed
 import moment from 'moment';
 import AddMemberDialog from '@/components/shared/AddMemberDialog';
@@ -19,18 +20,20 @@ const GroupDetailPage = () => {
   const params = useParams();
   const router = useRouter(); // Initialize useRouter
   const groupId = (params?.groupId as string) || '';
-  const { getGroupById, getMembersByGroupId, getExpensesByGroupId, addMember, addOfflineMember, removeMember } = useBudget();
+  const { getGroupById, getMembersByGroupId, getExpensesByGroupId, addMember, addOfflineMember, removeMember, updateGroupBaseCurrency } = useBudget();
   const [openAddMemberDialog, setOpenAddMemberDialog] = React.useState(false);
 
   const [group, setGroup] = useState<Group | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [isEditingCurrency, setIsEditingCurrency] = useState(false);
+  const [newBaseCurrency, setNewBaseCurrency] = useState('');
 
   const fetchGroupData = React.useCallback(() => {
     const groupData = getGroupById(groupId);
     setGroup(groupData || null);
-
     if (groupData) {
+      setNewBaseCurrency(groupData.baseCurrency);
       const membersData = getMembersByGroupId(groupId);
       const expensesData = getExpensesByGroupId(groupId);
       setMembers(membersData);
@@ -79,6 +82,14 @@ const GroupDetailPage = () => {
     }
   };
 
+  const handleUpdateCurrency = async () => {
+    if (newBaseCurrency !== group.baseCurrency) {
+      await updateGroupBaseCurrency(groupId, newBaseCurrency);
+      fetchGroupData();
+    }
+    setIsEditingCurrency(false);
+  };
+
   return (
     <Container maxWidth="md" sx={{ mt: 4 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
@@ -98,6 +109,41 @@ const GroupDetailPage = () => {
             <Typography variant="body1">
               <strong>Group ID:</strong> {group.id}
             </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+              <Typography variant="body1">
+                <strong>Base Currency:</strong>
+              </Typography>
+              {isEditingCurrency ? (
+                <>
+                  <FormControl sx={{ ml: 2, minWidth: 120 }} size="small">
+                    <Select
+                      value={newBaseCurrency}
+                      onChange={(e) => setNewBaseCurrency(e.target.value)}
+                    >
+                      <MenuItem value="USD">USD</MenuItem>
+                      <MenuItem value="EUR">EUR</MenuItem>
+                      <MenuItem value="GBP">GBP</MenuItem>
+                      <MenuItem value="JPY">JPY</MenuItem>
+                      <MenuItem value="AUD">AUD</MenuItem>
+                      <MenuItem value="CAD">CAD</MenuItem>
+                      <MenuItem value="CHF">CHF</MenuItem>
+                      <MenuItem value="CNY">CNY</MenuItem>
+                      <MenuItem value="HKD">HKD</MenuItem>
+                      <MenuItem value="SGD">SGD</MenuItem>
+                    </Select>
+                  </FormControl>
+                  <Button sx={{ ml: 1 }} onClick={handleUpdateCurrency}>Save</Button>
+                  <Button sx={{ ml: 1 }} onClick={() => setIsEditingCurrency(false)}>Cancel</Button>
+                </>
+              ) : (
+                <>
+                  <Typography sx={{ ml: 1 }}>{group.baseCurrency}</Typography>
+                  <IconButton size="small" sx={{ ml: 1 }} onClick={() => setIsEditingCurrency(true)}>
+                    <EditIcon fontSize="small" />
+                  </IconButton>
+                </>
+              )}
+            </Box>
             {group.coverPhotoUrl && (
               <Box sx={{ mt: 2 }}>
                 <Image src={group.coverPhotoUrl} alt="Group Cover" width={500} height={300} style={{ maxWidth: '100%', borderRadius: '8px' }} />
@@ -174,6 +220,11 @@ const GroupDetailPage = () => {
                       <Typography variant="body1" component="span" sx={{ fontWeight: 'bold' }}>
                         {expense.amount.toFixed(2)} {expense.currency}
                       </Typography>
+                      {expense.currency !== group.baseCurrency && expense.amountInBaseCurrency && (
+                        <Typography variant="body2" color="text.secondary">
+                          ({expense.amountInBaseCurrency.toFixed(2)} {group.baseCurrency})
+                        </Typography>
+                      )}
                       <Typography variant="body2" color="text.secondary">
                         {moment((expense.date as Timestamp)?.toDate()).format('MMM D, YYYY')}
                       </Typography>

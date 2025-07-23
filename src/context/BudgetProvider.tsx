@@ -2,6 +2,7 @@
 
 import React, { createContext, useReducer, useContext, ReactNode, useEffect } from 'react'
 import { collection, doc, getDocs, addDoc, updateDoc, deleteDoc, query, where, onSnapshot, writeBatch, serverTimestamp, arrayUnion, arrayRemove, Timestamp, FieldValue } from 'firebase/firestore'
+import { convertCurrency } from '../lib/currency';
 import { db } from '../lib/firebase'
 import { useAuth } from './AuthContext'
 
@@ -16,7 +17,8 @@ export interface Expense {
   groupId: string;
   title: string;
   amount: number;
-  currency: 'USD';
+  currency: string;
+  amountInBaseCurrency?: number;
   paidBy: string | null;
   date: Timestamp | FieldValue;
   receiptUrl?: string;
@@ -40,6 +42,8 @@ export interface Member {
 export interface Group {
   id: string
   name: string
+  baseCurrency: string;
+  budget?: { [monthId: string]: number }; // e.g. { "2023-01": 500, "2023-02": 450 }
   members: Member[];
   expenses: Expense[];
   recurring: any[]; // TODO: Define recurring type
@@ -64,6 +68,7 @@ export enum ActionType {
   SET_ACTIVE_GROUP = 'SET_ACTIVE_GROUP',
   UPDATE_MONTHLY_SPEND = 'UPDATE_MONTHLY_SPEND',
   UPDATE_GROUP = 'UPDATE_GROUP',
+  UPDATE_GROUP_BUDGET = 'UPDATE_GROUP_BUDGET',
 }
 
 type Action =
@@ -72,6 +77,7 @@ type Action =
   | { type: ActionType.SET_GROUPS; payload: Group[] }
   | { type: ActionType.SET_ACTIVE_GROUP; payload: string | null }
   | { type: ActionType.UPDATE_GROUP; payload: { groupId: string; members?: Member[]; expenses?: Expense[] } }
+  | { type: ActionType.UPDATE_GROUP_BUDGET; payload: { groupId: string; monthId: string; budget: number } }
   | {
       type: ActionType.UPDATE_MONTHLY_SPEND
       payload: { monthId: string; total: number; categoryId: string; amount: number }
@@ -110,6 +116,22 @@ const budgetReducer = (state: State, action: Action): State => {
           return group;
         }),
       };
+    case ActionType.UPDATE_GROUP_BUDGET:
+      return {
+        ...state,
+        groups: state.groups.map(group => {
+          if (group.id === action.payload.groupId) {
+            return {
+              ...group,
+              budget: {
+                ...group.budget,
+                [action.payload.monthId]: action.payload.budget,
+              },
+            };
+          }
+          return group;
+        }),
+      };
     case ActionType.UPDATE_MONTHLY_SPEND:
       // This is a placeholder for optimistic UI updates.
       console.log('Dispatching UPDATE_MONTHLY_SPEND', action.payload)
@@ -132,10 +154,12 @@ const BudgetContext = createContext<{
   addMember: (groupId: string, email: string) => Promise<void>;
   addOfflineMember: (groupId: string, name: string) => Promise<void>;
   removeMember: (groupId: string, memberId: string) => Promise<void>;
-  addGroup: (groupName: string) => Promise<string>;
+  addGroup: (groupName: string, baseCurrency: string) => Promise<string>;
+  updateGroupBudget: (groupId: string, monthId: string, budget: number) => Promise<void>;
   confirmSettlement: (settlementId: string) => Promise<void>;
   updateUserDisplayName: (userId: string, displayName: string) => Promise<void>;
   setActiveGroup: (groupId: string | null) => void;
+  updateGroupBaseCurrency: (groupId: string, newBaseCurrency: string) => Promise<void>;
 } | null>(null)
 
 // Provider
@@ -227,9 +251,22 @@ export const BudgetProvider = ({ children }: { children: ReactNode }) => {
 
   const addExpense = async (expense: Omit<Expense, 'id' | 'groupId'>, groupId: string) => {
     try {
+      const group = getGroupById(groupId);
+      if (!group) {
+        throw new Error('Group not found');
+      }
+
+      let amountInBaseCurrency: number | undefined;
+      if (expense.currency && expense.currency !== group.baseCurrency) {
+        amountInBaseCurrency = await convertCurrency(expense.amount, expense.currency, group.baseCurrency);
+      } else {
+        amountInBaseCurrency = expense.amount;
+      }
+
       const expensesRef = collection(db, `groups/${groupId}/expenses`);
       await addDoc(expensesRef, {
         ...expense,
+        amountInBaseCurrency,
       });
     } catch (error) {
       console.error("Error adding expense:", error);
@@ -240,9 +277,22 @@ export const BudgetProvider = ({ children }: { children: ReactNode }) => {
 
   const updateExpense = async (expense: Expense) => {
     try {
+      const group = getGroupById(expense.groupId);
+      if (!group) {
+        throw new Error('Group not found');
+      }
+
+      let amountInBaseCurrency: number | undefined;
+      if (expense.currency && expense.currency !== group.baseCurrency) {
+        amountInBaseCurrency = await convertCurrency(expense.amount, expense.currency, group.baseCurrency);
+      } else {
+        amountInBaseCurrency = expense.amount;
+      }
+
       const expenseRef = doc(db, `groups/${expense.groupId}/expenses`, expense.id);
       await updateDoc(expenseRef, {
         ...expense,
+        amountInBaseCurrency,
       });
     } catch (error) {
       console.error("Error updating expense:", error);
@@ -339,13 +389,15 @@ export const BudgetProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const addGroup = async (groupName: string) => {
+  const addGroup = async (groupName: string, baseCurrency: string) => {
     try {
       if (!user) throw new Error("User not authenticated.");
 
       const groupsRef = collection(db, 'groups');
       const newGroupRef = await addDoc(groupsRef, {
         name: groupName,
+        baseCurrency: baseCurrency,
+        budget: {}, // Initialize budget
         createdAt: serverTimestamp(),
         createdBy: user.uid,
         memberUserIds: [user.uid], // Initialize with creator's UID
@@ -365,6 +417,22 @@ export const BudgetProvider = ({ children }: { children: ReactNode }) => {
     } catch (error) {
       console.error("Error adding group:", error);
       dispatch({ type: ActionType.SET_ERROR, payload: "Failed to add group." });
+      throw error;
+    }
+  };
+
+  const updateGroupBudget = async (groupId: string, monthId: string, budget: number) => {
+    try {
+      const groupRef = doc(db, 'groups', groupId);
+      // Use dot notation to update a specific field in a map
+      await updateDoc(groupRef, {
+        [`budget.${monthId}`]: budget
+      });
+      // Optimistically update local state
+      dispatch({ type: ActionType.UPDATE_GROUP_BUDGET, payload: { groupId, monthId, budget } });
+    } catch (error) {
+      console.error("Error updating group budget:", error);
+      dispatch({ type: ActionType.SET_ERROR, payload: "Failed to update group budget." });
       throw error;
     }
   };
@@ -396,13 +464,37 @@ export const BudgetProvider = ({ children }: { children: ReactNode }) => {
     await batch.commit();
   };
 
+  const updateGroupBaseCurrency = async (groupId: string, newBaseCurrency: string) => {
+    try {
+      const groupRef = doc(db, 'groups', groupId);
+      await updateDoc(groupRef, { baseCurrency: newBaseCurrency });
+
+      const expensesRef = collection(db, `groups/${groupId}/expenses`);
+      const expensesSnapshot = await getDocs(expensesRef);
+      const batch = writeBatch(db);
+
+      for (const expenseDoc of expensesSnapshot.docs) {
+        const expense = expenseDoc.data() as Expense;
+        const amountInBaseCurrency = await convertCurrency(expense.amount, expense.currency, newBaseCurrency);
+        const expenseRef = doc(db, `groups/${groupId}/expenses`, expenseDoc.id);
+        batch.update(expenseRef, { amountInBaseCurrency });
+      }
+
+      await batch.commit();
+    } catch (error) {
+      console.error("Error updating base currency:", error);
+      dispatch({ type: ActionType.SET_ERROR, payload: "Failed to update base currency." });
+      throw error;
+    }
+  };
+
   const setActiveGroup = (groupId: string | null) => {
     dispatch({ type: ActionType.SET_ACTIVE_GROUP, payload: groupId });
   };
 
 
   return (
-    <BudgetContext.Provider value={{ state, dispatch, getGroupById, getMembersByGroupId, getExpensesByGroupId, getExpenseById, addExpense, updateExpense, addMember, addOfflineMember, removeMember, addGroup, confirmSettlement, updateUserDisplayName, setActiveGroup }}>
+    <BudgetContext.Provider value={{ state, dispatch, getGroupById, getMembersByGroupId, getExpensesByGroupId, getExpenseById, addExpense, updateExpense, addMember, addOfflineMember, removeMember, addGroup, updateGroupBudget, confirmSettlement, updateUserDisplayName, setActiveGroup, updateGroupBaseCurrency }}>
       {children}
     </BudgetContext.Provider>
   )
