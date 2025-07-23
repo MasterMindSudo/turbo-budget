@@ -18,7 +18,8 @@ import {
   CardActions,
   CardHeader,
   Tab,
-  Tabs
+  Tabs,
+  styled
 } from '@mui/material';
 import { usePathname, useRouter } from 'next/navigation';
 import HomeIcon from '@mui/icons-material/Home';
@@ -32,6 +33,25 @@ import { useBudget } from '../../context/BudgetProvider';
 interface ClientAppLayoutProps {
   children: ReactNode;
 }
+
+  const StyledTab = styled(Tab)<{ isLeftTab?: boolean }>(({ theme, isLeftTab }) => ({
+    backgroundColor: '#e4e4e4',
+    boxShadow: `inset ${isLeftTab ? '4px' : '-4px'} -36px 4px rgba(0, 0, 0, 0.12)`,
+
+    ':after': {
+      content: '""',
+      display: 'inline-block',
+      position: 'relative',
+      bottom: '-10px',
+      height: '2rem',
+      width: '100%',
+    },
+    
+    '&.Mui-selected': {
+      backgroundColor: 'white',
+      boxShadow: 'none',
+    },
+  }));
 
 const ClientAppLayout: FC<ClientAppLayoutProps> = ({ children }) => {
   const theme = useTheme();
@@ -54,7 +74,7 @@ const ClientAppLayout: FC<ClientAppLayoutProps> = ({ children }) => {
   };
 
   const [value, setValue] = useState(getActiveTab(pathname || ''));
-  const [tab, setTab] = useState(1);
+  const [tab, setTab] = useState(2);
 
   useEffect(() => {
     setValue(getActiveTab(pathname || ''));
@@ -94,7 +114,7 @@ const ClientAppLayout: FC<ClientAppLayoutProps> = ({ children }) => {
 
   const isExpenseFormPage = pathname?.includes('/expense/new') || pathname?.includes('/expense/edit');
 
-  const marginSize = '1rem';
+  const marginSize = '0.75rem';
 
   return (
     <Box
@@ -110,11 +130,6 @@ const ClientAppLayout: FC<ClientAppLayoutProps> = ({ children }) => {
           width: '100%',
           margin: `${marginSize} ${marginSize} 0`,
           maxWidth: isDesktop ? theme.breakpoints.values.md : `calc(100% - ${marginSize} * 2)`,
-          ':after': {
-            content: '""',
-            display: 'inline-block',
-            paddingBottom: '2rem',
-          }
         }}
       >
         <Tabs
@@ -122,14 +137,19 @@ const ClientAppLayout: FC<ClientAppLayoutProps> = ({ children }) => {
           centered
           value={tab}
           onChange={(event, newValue) => setTab(newValue)}
+          TabIndicatorProps={{
+            style: { display: 'none' },
+          }}
+
         >
-            <Tab label="Personal" value={1}/>
-            <Tab label="Group" value={2}/>
+            <StyledTab label="Personal" value={1} isLeftTab={tab === 1}/>
+            <StyledTab label="Group" value={2} isLeftTab={tab !== 2}/>
           </Tabs>
       </Card>
       <Card
         sx={{
           margin: `-2rem ${marginSize} ${marginSize}`,
+          zIndex: 1,
           maxWidth: isDesktop ? theme.breakpoints.values.md : `calc(100% - ${marginSize} * 2)`,
           width: '100%',
           flexGrow: 1,
@@ -160,33 +180,31 @@ const ClientAppLayout: FC<ClientAppLayoutProps> = ({ children }) => {
                 width: '100%',
                 border: '1px solid #e0e0e0',
                 borderRadius: '8px',
-                overflow: 'hidden',
-
+                overflow: 'auto',
               }}
             >
               <BottomNavigation
-                showLabels
+                showLabels={isDesktop}
                 value={value}
                 onChange={handleNavigation}
+                sx={{
+                  width: '100%',
+
+                  '.MuiBottomNavigationAction-root': {
+                    minWidth: '16px',
+                  }
+                }}
               >
-                <BottomNavigationAction label={isDesktop ? "Home" : ""} value="home" icon={<HomeIcon />} />
-                <BottomNavigationAction label={isDesktop ? "List" : ""} value="list" icon={<FormatListBulletedIcon />} />
+                <BottomNavigationAction label="Home" value="home" icon={<HomeIcon />} />
+                <BottomNavigationAction label="List" value="list" icon={<FormatListBulletedIcon />} />
                 <BottomNavigationAction
-                  label={isDesktop ? "Edit" : ""}
+                  label="Edit"
                   value="edit"
                   icon={<EditIcon />}
-                  sx={
-                    {
-                      minWidth: 'auto',
-                      '& .MuiBottomNavigationAction-label': {
-                        fontSize: '0.75rem',
-                      },
-                    }
-                  }
                 />
-                <BottomNavigationAction label={isDesktop ? "Budget" : ""} value="budget" icon={<PieChartIcon />} />
-                <BottomNavigationAction label={isDesktop ? "Profile" : ""} value="profile" icon={<PersonIcon />} />
-                <BottomNavigationAction label={isDesktop ? "Invitations" : ""} value="invitations" icon={<MailIcon />} />
+                <BottomNavigationAction label="Budget" value="budget" icon={<PieChartIcon />} />
+                <BottomNavigationAction label="Profile" value="profile" icon={<PersonIcon />} />
+                <BottomNavigationAction label="Invitations" value="invitations" icon={<MailIcon />} />
               </BottomNavigation>
             </Box>
           )}
