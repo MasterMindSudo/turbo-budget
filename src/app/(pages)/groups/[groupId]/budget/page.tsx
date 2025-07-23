@@ -10,7 +10,16 @@ import { Gauge, gaugeClasses } from '@mui/x-charts/Gauge';
 import dayjs from 'dayjs';
 import { MONTH_ID_FORMAT } from '@/constants';
 import { categories as categoryData } from '@/lib/data';
+import { Timestamp } from 'firebase/firestore';
 import { debounce } from 'lodash';
+
+// Helper to safely convert a Firestore Timestamp or FieldValue to a Date
+const toDate = (dateValue: any): Date | null => {
+  if (dateValue && typeof dateValue.toDate === 'function') {
+    return dateValue.toDate();
+  }
+  return null;
+};
 
 const BudgetPage = () => {
   const params = useParams();
@@ -25,8 +34,8 @@ const BudgetPage = () => {
   const [budgetGoal, setBudgetGoal] = useState<string | number>('');
 
   // Debounced function to update Firestore
-  const debouncedUpdateBudget = useCallback(
-    debounce((newBudget: number) => {
+  const debouncedUpdateBudget = useMemo(
+    () => debounce((newBudget: number) => {
       if (groupId && selectedMonth) {
         updateGroupBudget(groupId, selectedMonth, newBudget);
       }
@@ -66,11 +75,14 @@ const BudgetPage = () => {
       };
     }
 
+    const safeExpenses = expenses.map(e => ({ ...e, date: toDate(e.date) })).filter(e => e.date !== null);
+
     // --- Data for Month Selector and Single Month Charts ---
-    const months = [...new Set(group.expenses.map(e => dayjs(e.date.toDate()).format(MONTH_ID_FORMAT)))].sort((a, b) => b.localeCompare(a));
+    const months = [...new Set(safeExpenses.map(e => dayjs(e.date).format(MONTH_ID_FORMAT)))].sort((a, b) => b.localeCompare(a));
+    
     const filteredExpenses = selectedMonth 
-      ? expenses.filter(e => dayjs(e.date.toDate()).format(MONTH_ID_FORMAT) === selectedMonth)
-      : expenses; // If no month selected, use all expenses for some charts
+      ? safeExpenses.filter(e => dayjs(e.date).format(MONTH_ID_FORMAT) === selectedMonth)
+      : safeExpenses; // If no month selected, use all expenses for some charts
 
     const categoryTotals = filteredExpenses.reduce((acc, expense) => {
       const categoryId = expense.category || 'Uncategorized';
@@ -90,8 +102,8 @@ const BudgetPage = () => {
     const monthlyCategoryTotals: Record<string, Record<string, number>> = {};
     const allCategories = new Set<string>();
 
-    group.expenses.forEach(expense => {
-        const month = dayjs(expense.date.toDate()).format(MONTH_ID_FORMAT);
+    safeExpenses.forEach(expense => {
+        const month = dayjs(expense.date).format(MONTH_ID_FORMAT);
         const categoryId = expense.category || 'Uncategorized';
         const categoryName = categoryData.find(c => c.id === categoryId)?.name || categoryId;
         const amount = expense.amountInBaseCurrency || expense.amount;
@@ -187,7 +199,7 @@ const BudgetPage = () => {
                 <BarChart
                   dataset={chartData}
                   yAxis={[{ scaleType: 'band', dataKey: 'category' }]}
-                  series={[{ dataKey: 'total', label: `Total Spend (${group.baseCurrency})`, valueFormatter: (value) => value?.toFixed(2) }]}
+                  series={[{ dataKey: 'total', label: `Total Spend (${group.baseCurrency})`, valueFormatter: (value) => value ? value.toFixed(2) : '' }]}
                   layout="horizontal"
                   height={300}
                   margin={{ top: 10, bottom: 30, left: 120, right: 20 }}

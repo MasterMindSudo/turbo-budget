@@ -10,6 +10,15 @@ import dayjs from 'dayjs';
 import { MONTH_ID_FORMAT } from '@/constants';
 
 import { categories as categoryData } from '@/lib/data';
+import { Timestamp } from 'firebase/firestore';
+
+// Helper to safely convert a Firestore Timestamp or FieldValue to a Date
+const toDate = (dateValue: any): Date | null => {
+  if (dateValue && typeof dateValue.toDate === 'function') {
+    return dateValue.toDate();
+  }
+  return null;
+};
 
 const ChartTestingPage: React.FC = () => {
   const { state } = useBudget();
@@ -53,10 +62,12 @@ const ChartTestingPage: React.FC = () => {
         stackedBarData: { dataset: [], series: [], xAxis: [] } 
       };
     }
+    
+    const safeExpenses = group.expenses.map(e => ({ ...e, date: toDate(e.date) })).filter(e => e.date !== null);
 
     // --- Data for Month Selector and Single Month Charts ---
-    const months = [...new Set(group.expenses.map(e => dayjs(e.date.toDate()).format(MONTH_ID_FORMAT)))].sort((a, b) => b.localeCompare(a));
-    const filteredExpenses = group.expenses.filter(e => dayjs(e.date.toDate()).format(MONTH_ID_FORMAT) === selectedMonth);
+    const months = [...new Set(safeExpenses.map(e => dayjs(e.date).format(MONTH_ID_FORMAT)))].sort((a, b) => b.localeCompare(a));
+    const filteredExpenses = safeExpenses.filter(e => dayjs(e.date).format(MONTH_ID_FORMAT) === selectedMonth);
     const categoryTotals = filteredExpenses.reduce((acc, expense) => {
       const categoryId = expense.category || 'Uncategorized';
       const categoryName = categoryData.find(c => c.id === categoryId)?.name || categoryId;
@@ -73,8 +84,8 @@ const ChartTestingPage: React.FC = () => {
     const monthlyCategoryTotals: Record<string, Record<string, number>> = {};
     const allCategories = new Set<string>();
 
-    group.expenses.forEach(expense => {
-        const month = dayjs(expense.date.toDate()).format(MONTH_ID_FORMAT);
+    safeExpenses.forEach(expense => {
+        const month = dayjs(expense.date).format(MONTH_ID_FORMAT);
         const categoryId = expense.category || 'Uncategorized';
         const categoryName = categoryData.find(c => c.id === categoryId)?.name || categoryId;
         allCategories.add(categoryName);

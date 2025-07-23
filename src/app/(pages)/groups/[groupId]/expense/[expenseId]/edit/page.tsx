@@ -20,11 +20,16 @@ const EditExpensePage: React.FC = () => {
   const expenseToEdit = getExpenseById(expenseId);
 
   const handleUpdateExpense = (expenseData: Omit<Expense, 'id' | 'currency'> & { currency?: string }) => {
-    if (!groupId || !expenseId) {
-      console.error('Group or Expense ID is missing.');
+    if (!groupId || !expenseId || !currentGroup) {
+      console.error('Group, Expense ID, or Group data is missing.');
       return;
     }
-    updateExpense({ ...expenseData, id: expenseId, groupId });
+    updateExpense({ 
+      ...expenseData, 
+      id: expenseId, 
+      groupId, 
+      currency: expenseData.currency || currentGroup.baseCurrency 
+    });
     router.back();
   };
 

@@ -3,7 +3,7 @@
 
 import React, { useState } from 'react';
 import { useParams } from 'next/navigation';
-import { useBudget } from '@/context/BudgetProvider';
+import { useBudget, Expense } from '@/context/BudgetProvider';
 import { useAuth } from '@/context/AuthContext';
 import { settleDebts } from '@/lib/settle';
 import { Container, Typography, Box, Paper, List, ListItem, ListItemText, Avatar, Chip, Button, Select, MenuItem, FormControl, InputLabel } from '@mui/material';
@@ -211,7 +211,7 @@ const SettleUpPage = () => {
           </List>
         ) : (
           <Typography variant="body2" color="text.secondary">
-            Click "Calculate Settlement" to see who owes whom for this month.
+            Click &quot;Calculate Settlement&quot; to see who owes whom for this month.
           </Typography>
         )}
       </Paper>
