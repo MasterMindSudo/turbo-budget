@@ -17,11 +17,14 @@ const NewExpensePage: React.FC = () => {
   const currentGroup = getGroupById(groupId);
 
   const handleAddExpense = (expenseData: Omit<Expense, 'id' | 'currency'> & { currency?: string }) => {
-    if (!groupId) {
-      console.error('Group ID is missing.');
+    if (!groupId || !currentGroup) {
+      console.error('Group ID or group data is missing.');
       return;
     }
-    addExpense({ ...expenseData, currency: 'USD' }, groupId);
+    addExpense({
+      ...expenseData,
+      currency: expenseData.currency || currentGroup.baseCurrency,
+    }, groupId);
     router.back();
   };
 

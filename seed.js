@@ -43,13 +43,13 @@ async function seedDatabase() {
   // Create a sample expense
   await db.collection(`groups/${groupId}/expenses`).add({
     title: 'Groceries',
-    amount: 150.75,
+    amount: parseFloat((150.75).toFixed(2)),
     currency: 'USD',
     paidBy: demoUserId,
     date: admin.firestore.Timestamp.now(),
     participants: [{
       memberId: demoUserId,
-      share: 150.75
+      share: parseFloat((150.75).toFixed(2))
     }]
   });
 
@@ -57,12 +57,12 @@ async function seedDatabase() {
   await db.collection(`groups/${groupId}/recurring`).add({
     template: {
       title: 'Rent',
-      amount: 1200,
+      amount: parseFloat((1200).toFixed(2)),
       currency: 'USD',
       paidBy: demoUserId,
       participants: [{
         memberId: demoUserId,
-        share: 1200
+        share: parseFloat((1200).toFixed(2))
       }]
     },
     frequency: 'monthly',

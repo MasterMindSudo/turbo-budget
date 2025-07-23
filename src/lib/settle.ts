@@ -35,21 +35,14 @@ export const settleDebts = (
     const paidBy = exp.paidBy;
     const amountCents = Math.round(exp.amount * 100);
 
+    // Credit the payer with the full amount.
     cents[paidBy] += amountCents;
 
-    if (exp.participants.length > 0) {
-      const shareCents = Math.floor(amountCents / exp.participants.length);
-      let remainderCents = amountCents % exp.participants.length;
-
-      exp.participants.forEach(p => {
-        let individualShare = shareCents;
-        if (remainderCents > 0) {
-          individualShare++;
-          remainderCents--;
-        }
-        cents[p.memberId] -= individualShare;
-      });
-    }
+    // Debit each participant for their pre-calculated, accurate share.
+    exp.participants.forEach(p => {
+      const shareCents = Math.round(p.share * 100);
+      cents[p.memberId] -= shareCents;
+    });
   });
 
   /* -------------------------------------------------------------
@@ -79,7 +72,7 @@ export const settleDebts = (
     tx.push({
       from:   d.memberId,
       to:     primary.memberId,
-      amount: +(d.cents / 100).toFixed(2)
+      amount: parseFloat((d.cents / 100).toFixed(2))
     });
 
     primary.cents -= d.cents;   // reduce what primary is still owed
@@ -98,7 +91,7 @@ export const settleDebts = (
     tx.push({
       from:   primary.memberId,
       to:     c.memberId,
-      amount: +(pay / 100).toFixed(2)
+      amount: parseFloat((pay / 100).toFixed(2))
     });
 
     primary.cents += pay;               // climb back toward zero
@@ -108,6 +101,8 @@ export const settleDebts = (
   /* -------------------------------------------------------------
      5.  Sanity-check: after all moves, every balance must be 0.
   ------------------------------------------------------------- */
+  console.log('[settleDebts] Final balance check. Leftover cents should be 0. Value:', primary.cents);
+
   if (primary.cents !== 0) {
     console.warn(
       '[settleDebts] – leftover cents after settlement:',

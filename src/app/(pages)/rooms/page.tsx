@@ -19,7 +19,7 @@ const RoomListPage: React.FC = () => {
   const handleAddRoom = () => {
     // TODO ⇢ Firebase: In a real app, this would open a dialog/modal for creating a new group in Firestore
     const newRoomName = `My New Group ${state.groups.length + 1}`;
-    addGroup(newRoomName); // Add a dummy room for now
+    addGroup(newRoomName, 'USD'); // Add a dummy room for now
     // After adding, redirect to the newly created group or the first group if no new ID is generated immediately
     router.push(`/groups/${state.groups[state.groups.length -1]?.id || 'group1'}`);
   };
